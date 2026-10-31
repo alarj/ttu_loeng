@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ttu-loeng"
+version = "0.1.0"
+description = "TalTechi Echo360 loengumaterjalide importeri spike"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+lecture-notes = "lecture_notes.cli:main"
+lecture-notes-asr = "lecture_notes.asr_benchmark:main"
+lecture-notes-stage3 = "lecture_notes.stage3:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

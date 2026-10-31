@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "icm0032-l03-asr-v1",
+  "status": "locked_pending_human_reference",
+  "locked_at": "2026-10-30T00:00:00Z",
+  "origin": {
+    "author": "AI (OpenAI Codex)",
+    "selection_method": "Three five-minute intervals fixed before benchmark outputs were inspected: early, middle and late lecture positions.",
+    "source_lesson_id": "a18d8522-4637-4fcf-a62a-60e3b1f2e586",
+    "source_title": "3. Business Continuity and Disaster Recovery Planning"
+  },
+  "language": "et",
+  "clips": [
+    {
+      "id": "l03_early_0040_0090",
+      "start_seconds": 240.0,
+      "end_seconds": 540.0,
+      "selection_role": "lecture beginning and framing",
+      "reference_status": "missing",
+      "reference_text": null,
+      "expected_terms": []
+    },
+    {
+      "id": "l03_middle_6000_6500",
+      "start_seconds": 3600.0,
+      "end_seconds": 3900.0,
+      "selection_role": "middle technical explanation",
+      "reference_status": "missing",
+      "reference_text": null,
+      "expected_terms": []
+    },
+    {
+      "id": "l03_late_1150_1200",
+      "start_seconds": 6900.0,
+      "end_seconds": 7200.0,
+      "selection_role": "late lecture explanation or example",
+      "reference_status": "missing",
+      "reference_text": null,
+      "expected_terms": []
+    }
+  ]
+}

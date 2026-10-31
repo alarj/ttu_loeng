@@ -1,0 +1,21 @@
+FROM python:3.12-slim-bookworm
+
+ARG FASTER_WHISPER_VERSION
+ARG PYAV_VERSION
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY pyproject.toml ./
+COPY src ./src
+COPY benchmarks ./benchmarks
+
+RUN test -n "$FASTER_WHISPER_VERSION" \
+    && test -n "$PYAV_VERSION" \
+    && pip install --no-cache-dir "av==${PYAV_VERSION}" "faster-whisper==${FASTER_WHISPER_VERSION}" \
+    && pip install --no-cache-dir --no-deps .
+
+ENTRYPOINT ["lecture-notes-asr"]
+CMD ["--help"]

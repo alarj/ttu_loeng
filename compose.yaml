@@ -1,0 +1,71 @@
+services:
+  importer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TTU_LOENG_REPO_ROOT: /app
+      TTU_LOENG_RUNTIME_ROOT: ${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
+      HOME: ${TTU_LOENG_HOME:-/runtime/home}
+      USER: ${TTU_LOENG_USER:-ttu-loeng}
+      LOGNAME: ${TTU_LOENG_LOGNAME:-ttu-loeng}
+    user: "${TTU_LOENG_UID:-1000}:${TTU_LOENG_GID:-1000}"
+    volumes:
+      - ${TTU_LOENG_RUNTIME_ROOT:?Set TTU_LOENG_RUNTIME_ROOT to a writable host directory}:${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
+    command: ["--help"]
+
+  asr:
+    build:
+      context: .
+      dockerfile: Dockerfile.asr
+      args:
+        FASTER_WHISPER_VERSION: ${FASTER_WHISPER_VERSION:?Set FASTER_WHISPER_VERSION in .env}
+        PYAV_VERSION: ${PYAV_VERSION:?Set PYAV_VERSION in .env}
+    profiles: ["asr"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TTU_LOENG_REPO_ROOT: /app
+      TTU_LOENG_RUNTIME_ROOT: ${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
+      HOME: ${TTU_LOENG_HOME:-/runtime/home}
+      USER: ${TTU_LOENG_USER:-ttu-loeng}
+      LOGNAME: ${TTU_LOENG_LOGNAME:-ttu-loeng}
+      HF_HOME: ${TTU_LOENG_HF_HOME:-/runtime/models/huggingface}
+      HF_HUB_CACHE: ${TTU_LOENG_HF_HUB_CACHE:-/runtime/models/huggingface/hub}
+      OMP_NUM_THREADS: ${ASR_CPU_THREADS:-3}
+    user: "${TTU_LOENG_UID:-1000}:${TTU_LOENG_GID:-1000}"
+    cpus: ${ASR_WORKER_CPUS:-3.0}
+    volumes:
+      - ${TTU_LOENG_RUNTIME_ROOT:?Set TTU_LOENG_RUNTIME_ROOT to a writable host directory}:${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
+    command: ["--help"]
+
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.pipeline
+      args:
+        PYMUPDF_VERSION: ${PYMUPDF_VERSION:?Set PYMUPDF_VERSION in .env}
+    profiles: ["pipeline"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TTU_LOENG_REPO_ROOT: /app
+      TTU_LOENG_RUNTIME_ROOT: ${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
+      HOME: ${TTU_LOENG_HOME:-/runtime/home}
+      USER: ${TTU_LOENG_USER:-ttu-loeng}
+      LOGNAME: ${TTU_LOENG_LOGNAME:-ttu-loeng}
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      STAGE3_LLM_MODEL: ${STAGE3_LLM_MODEL:-mistral:latest}
+    user: "${TTU_LOENG_UID:-1000}:${TTU_LOENG_GID:-1000}"
+    cpus: ${PIPELINE_WORKER_CPUS:-3.0}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${TTU_LOENG_RUNTIME_ROOT:?Set TTU_LOENG_RUNTIME_ROOT to a writable host directory}:${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
+      - ./docs/initial_materials:/materials:ro
+    command: ["--help"]

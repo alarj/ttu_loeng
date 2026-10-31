@@ -1,0 +1,27 @@
+FROM python:3.12-slim-bookworm
+
+ARG PYMUPDF_VERSION
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ffmpeg \
+        tesseract-ocr \
+        tesseract-ocr-eng \
+        tesseract-ocr-est \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY pyproject.toml ./
+COPY src ./src
+COPY benchmarks/evidence ./benchmarks/evidence
+
+RUN test -n "$PYMUPDF_VERSION" \
+    && pip install --no-cache-dir "PyMuPDF==${PYMUPDF_VERSION}" \
+    && pip install --no-cache-dir --no-deps .
+
+ENTRYPOINT ["lecture-notes-stage3"]
+CMD ["--help"]
