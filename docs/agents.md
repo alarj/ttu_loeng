@@ -35,6 +35,9 @@ Koostaja: AI (OpenAI Codex), kasutaja juhiste järgi. Käesoleva dokumendi esime
 
 ## 5. Tööpõhimõtted
 
+- Ülesannet ei tohi iseseisvalt laiendada ega kitsendada. Kui ülesande laiendamine või kitsendamine tundub vajalik, tuleb enne muudatuse tegemist kasutajalt küsida.
+- Kasutusele ei tohi võtta enda välja mõeldud mõisteid ega termineid, mille sisu ei ole inimesele arusaadavalt lahti seletatud.
+- Kasutada ei tohi mõõtühikuid, mida ei ole kasutajaga kokku lepitud ja mille olemus ei ole inimesele üheselt arusaadav.
 - Ärireeglid peavad elama võimalikult tsentraalselt ja järjekindlalt; väldi reeglite dubleerimist eri kihtides.
 - Muudatused peavad olema minimaalsed, sihitud ja kooskõlas olemasoleva arhitektuuriga.
 - Töötavat koodi ei tohi igaks juhuks muuta ega ennetavalt parandada. Kui mingi osa töötab ja ei ole uuritava vea tõendatud juurpõhjus, siis seda ei muudeta.
@@ -113,6 +116,7 @@ Koostaja: AI (OpenAI Codex), kasutaja juhiste järgi. Käesoleva dokumendi esime
 - [`docs/tehniline_spek.md`](tehniline_spek.md) — tehniline arhitektuur, andmemudel, töövoog ja etapistus.
 - [`docs/asr_benchmark.md`](asr_benchmark.md) — Etapp 2 kontrollkomplekt, mudelivõrdlus, mõõtetulemused ja otsus.
 - [`docs/etapp3_vertikaalne_proov.md`](etapp3_vertikaalne_proov.md) — Etapp 3 ühe teema tõendipaketi, kohaliku LLM-i katse, kontrolli ja katvuslünkade raport.
+- [`docs/transkripti_toimetamise_proov.md`](transkripti_toimetamise_proov.md) — lihtsa vabatekstipromptiga transkripti toimetamise katse ja inimese ülevaatus.
 
 ### Lähte- ja võrdlusmaterjalid
 
@@ -137,11 +141,16 @@ Koostaja: AI (OpenAI Codex), kasutaja juhiste järgi. Käesoleva dokumendi esime
 - [`Dockerfile.asr`](../Dockerfile.asr) — Faster-Whisperi sõltuvustega eraldatud ASR-workeri konteinerpakendus.
 - [`Dockerfile.pipeline`](../Dockerfile.pipeline) — PDF-i, video, OCR-i ja Etapp 3 töötluse eraldatud konteinerpakendus.
 - [`src/lecture_notes/stage3.py`](../src/lecture_notes/stage3.py) — Etapp 3 ainekava, allikate joondamise, tõendite ja peatüki töövoog.
+- [`src/lecture_notes/simple_transcript_editor.py`](../src/lecture_notes/simple_transcript_editor.py) — järjestikuse transkriptsioonilõigu lihtsa vabatekstipromptiga toimetamise käsk.
+- [`src/lecture_notes/full_notes_generator.py`](../src/lecture_notes/full_notes_generator.py) — tervikliku EstLLM-i konspektikatse sisendpaketi koostamine, asünkroonse jooksu olek ja väljundi salvestamine.
+- [`prompts/konspekt.md`](../prompts/konspekt.md) — lokaalsele EstLLM-ile antav tervikliku ülikoolikonspekti koostamise juhis.
 - [`benchmarks/datasets/lecture3_v1.json`](../benchmarks/datasets/lecture3_v1.json) — loengu 3 lukustatud ASR-kontrollkomplekti masinloetav kirjeldus.
 - [`benchmarks/evidence/l03_3e_v1.json`](../benchmarks/evidence/l03_3e_v1.json) — Etapp 3 esimese vertikaalse proovi auditeeritav tõendi- ja slaidivalik ning teadaolev katvuslünk.
+- [`benchmarks/editing/l03_editing_v1.json`](../benchmarks/editing/l03_editing_v1.json) — loengu alguse, keskosa ja lõpu lukustatud toimetamiskatse valik.
 - [`.env.example`](../.env.example) — runtime’i, konteineri kasutaja ja kodukataloogi seadistuse mall.
 - [`tests/test_echo360.py`](../tests/test_echo360.py) — olekuloogika võrguvabad kontrollid.
 - [`tests/test_asr_benchmark.py`](../tests/test_asr_benchmark.py) — ASR-i kvaliteedimõõdikute võrguvabad kontrollid.
+- [`tests/test_simple_transcript_editor.py`](../tests/test_simple_transcript_editor.py) — lihtsa prompti ja järjestikuse tekstilõigu koostamise võrguvabad kontrollid.
 
 Registrit tuleb täiendada kohe, kui projektile lisandub README, andmeskeem, API leping, konteinerite kirjeldus, hindamisandmete register või muu asjakohane allikas. Registrisse kuulumine ei anna allikale teiste ees ülimuslikkust.
 

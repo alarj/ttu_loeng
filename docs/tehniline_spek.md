@@ -83,7 +83,7 @@ Analüüsitud lähtefailid:
 
 Ainekava sisaldab teemade alam-õpiväljundeid, testide ja eksami konteksti ning õppematerjali prioriteete. Näidiskonspekt sisaldab eksamifookust, 22 nummerdatud teemajaotist, definitsioone, tabeleid, slaidijoonist, õppejõu näiteid ja 20 valikvastustega kordamisküsimust.
 
-31.10.2026 lisas kasutaja PowerPointi faili, mis pealkirja, kirjelduse ja põgusa sisukontrolli järgi on tõenäoliselt loengu 3 slaidipakk. Muutmata koopia asub [`initial_materials/L03_slaidikandidaat.pptx`](initial_materials/L03_slaidikandidaat.pptx) ning sisaldab 88 slaidi ja 48 märkmelehte. Faili täpne päritolu ja vastavus salvestises kasutatud slaididele ei ole teada, mistõttu käsitletakse seda kontrollimata slaidikandidaadina. Enne slaidi- ja ajaviidete loomist tuleb võrrelda selle sisu, järjekorda ja versiooni salvestises nähtuga.
+31.10.2026 lisas kasutaja PowerPointi faili, mis pealkirja, kirjelduse ja põgusa sisukontrolli järgi on tõenäoliselt loengu 3 slaidipakk. Muutmata koopia asub [`initial_materials/L03_slaidikandidaat.pptx`](initial_materials/L03_slaidikandidaat.pptx) ning sisaldab 88 slaidi ja 48 märkmelehte. Faili täpne päritolu ja vastavus salvestises kasutatud slaididele ei ole teada. PPTX säilib lähtekomplektis, kuid on esialgsest töövoost kõrvale jäetud; slaidid võetakse videost.
 
 ### 4.4. `err_video_to_text` taaskasutuse piir
 
@@ -224,7 +224,7 @@ Valitud loengu puhul hangitakse:
 
 Salvestise olemasolu ei otsustata `hasVideo`, `isPast`, `isFuture`, ikooni värvi ega „LIVE“ sildi põhjal. `recording_status` tuletatakse tegelikest `Video` või `Audio` meediakirjetest järgmiste olekutena: `available`, `processing`, `failed` või `not_available`. Detailmanifest säilitab eraldi `hasAvailableVideo` ja muud Echo lipud.
 
-Kui Echo ei paku eraldi slide deck’i, luuakse siiski `slides.json` olekuga `not_provided_by_echo`. Kasutaja lisatud slaidikandidaat on Echo puuduvast slide deck’ist eraldiseisev sisend ja registreeritakse oma kontrollsummaga. Kuni vastavust pole salvestisega kontrollitud, ei asenda slaidikandidaat videost vaadeldavat slaidisisu. Kui võrdlus kinnitab vastavuse, võib PPTX-i teksti ja kujundust kasutada konspektis ning esitlusvideost eraldatud kaadreid slaidide ajajoonega joondamiseks. Erinevused tuleb säilitada ja kasutajale eraldi välja tuua, mitte lahendada ühe allika vaikimisi eelistamisega.
+Kui Echo ei paku eraldi slide deck’i, võetakse slaidid esitlusvideost. Tuvastatud erinevad slaidid seotakse nende videos näitamise ajavahemikuga. Toimetatud transkript võib kuvada kõik erinevad slaidid kronoloogiliselt; konspekti valitakse ainult teema mõistmiseks või õppimiseks vajalikud slaidid. PPTX-slaidikandidaati esialgses töövoos ei kasutata.
 
 Täisvideot ei laadita vaikimisi püsivalt alla. Audio eraldatakse voost ning teisendatakse ASR-ile sobivaks mono 16 kHz vorminguks. Pika loengu audio jagatakse loogilisteks või kindla ülekattega tehnilisteks lõikudeks.
 
@@ -294,9 +294,9 @@ Toimetamisel ei tohi:
 - parandada ebakindlat terminit oletuse põhjal;
 - kaotada seost algsete segmentide ja ajatemplitega.
 
-Mudelile antakse piiratud suurusega kattuvad lõigud, mitte kogu loengu transkript korraga. Struktureeritud väljund peab sisaldama vähemalt toimetatud teksti, kasutatud algsegmentide ID-sid, ajavahemikku ning eemaldatud või muudetud tekstiosade auditeeritavat loendit koos muudatuse liigiga. Deterministlik kontroll peab tuvastama puuduva algsegmendi, tundmatu segmendi-ID, ajavahemiku vea ja põhjendamata sisukaotuse kandidaadi.
+Mudelile antakse järjestikustest ASR-segmentidest ühendatud mõistliku pikkusega tekstilõik. Segmendid on tehnilised ajastusüksused, mitte eraldi toimetamisülesanded. Mudel saab tavalise eestikeelse juhise korrastada tekst kirjakeelseks, eemaldada tarbetud kordused ja vaadata üle lauselõpud ning tagastab tavalise teksti. Lõigu algus- ja lõpuaeg säilitatakse rakenduses; mudel ei pea ajatemplite ega tehniliste ID-dega tegelema.
 
-Transkripti toimetamise põhikandidaat on `tartuNLP/Llama-3.1-EstLLM-8B-Instruct-1125`. See TartuNLP ja TalTechNLP koostöös loodud 8B juhendmudel on eesti ja inglise keele jaoks edasi treenitud; mudeli [ametlik kaart](https://huggingface.co/tartuNLP/Llama-3.1-EstLLM-8B-Instruct-1125) kirjeldab muu hulgas Eesti keele ühendkorpuse kasutamist. Mudelit ei lukustata tootmistöötluseks enne ülesandepõhist katset inimese kontrollitud transkriptilõikudega. Olemasoleva `EuroLLM-9B-Instruct` põhise normaliseerija kasutamine ei ole esimeses katses nõutav; see jääb vajaduse korral võrdluskandidaadiks.
+Transkripti toimetamise kandidaat on `tartuNLP/Llama-3.1-EstLLM-8B-Instruct-1125`. Ollama töötab projekti enda `llm-ollama` teenusena ja kasutab projekti hostikasutaja UID/GID-d. Mudel lukustatakse töövoogu alles pärast seda, kui inimene on lihtsa promptiga katselõigu alg- ja lõppteksti võrrelnud.
 
 ### 7.4. `DIARIZING`
 
@@ -354,7 +354,7 @@ OCR-i ei käivitata kogu video kõikidel kaadritel. OCR-i kasutatakse slaididel 
 
 ### 7.7. `EXTRACTING_EVIDENCE`
 
-Enne proosakonspekti genereerimist eraldatakse struktureeritud kandidaadid:
+Konspekti koostamisel peab mudel leidma sisendmaterjalidest vähemalt järgmise õppesisu:
 
 - definitsioon;
 - oluline väide;
@@ -369,11 +369,11 @@ Enne proosakonspekti genereerimist eraldatakse struktureeritud kandidaadid:
 - küsimus ja vastus;
 - vastuolu või ebakindlus.
 
-Iga kandidaat peab viitama vähemalt ühele tõendile. Eksamijuhis vajab ainekava või õppejõu selget ütlust, mitte ainult mudeli järeldust.
+Olulised väited peavad olema seostatavad vähemalt ühe sisendallikaga. Eksamijuhis vajab ainekava või õppejõu selget ütlust, mitte ainult mudeli järeldust. Eraldi struktureeritud kandidaatide või teemakaardi loomine ei ole konspekti koostamise kohustuslik vaheetapp.
 
 ### 7.8. `PLANNING_NOTES`
 
-Teemaplaneerija koostab peatükkide kava ainekava ja tõendite järgi. Kava ei pea järgima loengu ajajoont.
+Konspekti peatükkide ülesehitus lähtub ainekavast ja loengu sisust. Kava ei pea järgima loengu ajajoont.
 
 Planeerija peab:
 
@@ -386,19 +386,13 @@ Planeerija peab:
 
 ### 7.9. `GENERATING_NOTES`
 
-Konspekt genereeritakse peatükkide kaupa. Ühte mudelikutsesse ei anta kogu kolmetunnist transkriptsiooni.
+Töötluse tulemus peab olema üks terviklik ja iseseisvalt loetav konspekt. Mudelikutsete arv ega sisemine jaotus ei ole funktsionaalne nõue ning seda ei määrata oletuse põhjal ette. Esimene tervikkatse annab EstLLM-ile ühe sisendpaketina ainekava asjakohase osa, kogu ajatemplitega algtranskripti ja videost eraldatud slaidiandmed ning palub väljastada ühe tervikliku Markdown-konspekti.
 
-Kavandatud hierarhia:
-
-1. lõigupõhine tõendite eraldus;
-2. ühe alamteema süntees;
-3. peatüki redigeerimine;
-4. kogu konspekti korduste ja terminite ühtlustamine;
-5. kordamisküsimuste genereerimine ainult kinnitatud konspekti põhjal.
+Konspekti mahule ei seata tokenipõhist väljundipiiri. Sisuline vastuvõtukriteerium on lähteülesandes nõutud katvus, iseseisev loetavus ning näidiskonspektiga võrreldav detailsus ja struktuur. Mudeli tehnilisi kontekstipiire käsitletakse käituskeskkonna omadusena, mitte konspekti soovitud pikkuse mõõduna.
 
 Kohaliku LLM-i liides peab olema teenusepakkujast sõltumatu. Esialgne käitusviis on lokaalne Ollama või vajaduse korral `llama.cpp`-põhine endpoint.
 
-Konspekti sünteesi põhikandidaat on sama `tartuNLP/Llama-3.1-EstLLM-8B-Instruct-1125`, mida hinnatakse transkripti toimetamisel. Ühe mudeli kasutamine ei ühenda tööetappe: transkripti toimetamisel ja konspekti sünteesil on eraldi prompt, sisendpakett, väljundskeem, cache’i võti ja kvaliteedikontroll. Konspekt koostatakse peatükkide kaupa ainekava, slaidide ning algsegmentidele viitava tõendipaketi põhjal; ainult toimetatud proosat ei käsitleta iseseisva tõeallikana.
+Konspekti sünteesi põhikandidaat on sama `tartuNLP/Llama-3.1-EstLLM-8B-Instruct-1125`, mida hinnatakse transkripti toimetamisel. Ühe mudeli kasutamine ei ühenda tööetappe: transkripti toimetamisel ja konspekti sünteesil on eraldi prompt, sisendpakett, väljund ja kvaliteedikontroll. Konspekti sisendiks on ainekava asjakohane osa, kogu ajatemplitega algtranskript ja videost eraldatud slaidiandmed; toimetatud proosat ega näidiskonspekti ei kasutata konspekti faktilise sisendina.
 
 Eraldi konspektimudel lisatakse ainult siis, kui EstLLM-i ülesandepõhine katse ei saavuta faktilise kooskõla, sisusäilituse, eesti keele või juhiste järgimise kvaliteediväravat. Sellisel juhul võrreldakse sama lukustatud tõendipaketi peal teist lokaalset avatud mudelit; suurema mudeli valikut ei põhjendata üksnes parameetrite arvuga.
 

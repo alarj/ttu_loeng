@@ -17,7 +17,9 @@ WORKDIR /app
 
 COPY pyproject.toml ./
 COPY src ./src
+COPY prompts ./prompts
 COPY benchmarks/evidence ./benchmarks/evidence
+COPY benchmarks/editing ./benchmarks/editing
 
 RUN test -n "$PYMUPDF_VERSION" \
     && pip install --no-cache-dir "PyMuPDF==${PYMUPDF_VERSION}" \

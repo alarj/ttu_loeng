@@ -147,12 +147,12 @@ Püsiv väljund:
 └── transcript.md
 ```
 
-Kogu loengu esimene töö käivitati 31.10.2026 kell 08:47 UTC asünkroonse konteinerina `ttu-loeng-l03-full-asr`. Töö olekut kirjeldab püsiv fail:
+Kogu loengu esimene töö käivitati 31.10.2026 kell 08:47 UTC asünkroonse konteinerina `ttu-loeng-l03-full-asr` ja lõpetas edukalt kell 10:28 UTC. Töö olekut kirjeldab püsiv fail:
 
 ```text
 /srv/ttu-loeng/outputs/jobs/l03/transcript/taltechnlp-turbo-et-int8/run.json
 ```
 
-Käivitamise järel oli olek `running`; 113 081 307-baidine lähte-MP3 asus ajutiselt `/srv/ttu-loeng/work/transcribe/fc92af1fe35c9dd5/source.mp3`. Transkriptsiooni kestus ja tulemused dokumenteeritakse pärast töö lõppu. Audio peab siis olema eemaldatud nii väljundi `run.json` kui ka failisüsteemi kontrolli järgi.
+Töö tulemus sisaldab 447 segmenti kogu 8129,492-sekundilise salvestise kohta. Kogukestus oli 6033,696 sekundit, mudeli laadimine 21,947 sekundit, transkribeerimine 6008,997 sekundit ja reaalajakordaja 0,7392. Mudel oli `TalTechNLP/whisper-large-v3-turbo-et-verbatim` revisjoniga `1ae5a487d24116955803df4d9d01df56645eb44f`. `run.json` märgib `temporary_audio_removed: true` ning ajutist 113 081 307-baidist lähte-MP3 faili pärast töö lõppu failisüsteemis ei ole.
 
 Kasutaja antud fail [`initial_materials/L03_transkript_teine_AI.md`](initial_materials/L03_transkript_teine_AI.md) on selle enda kirjelduse järgi videoloengu automaatsubtiitritest tundmatu AI-ga korrastatud, ajamärkideta täistranskript. Fail ei nimeta automaatsubtiitrite süsteemi ega platvormi ning seost Echo360-ga ei ole tuvastatud. Toimetusmudel ei ole teada ja väide sisu täieliku säilimise kohta ei ole algsete subtiitrite või toimetuslogi puudumise tõttu kontrollitav. Faili kasutatakse tulevikus teemade, terminite, teksti normaliseerimise ja joondamise kandidaadina, mitte inimese kontrollitud referentsina. Kogu loengu TalTechNLP väljund jääb toimetamata ajastatud kihiks, mille kaudu saab väited tagasi salvestisega siduda.

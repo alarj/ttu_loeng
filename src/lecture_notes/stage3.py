@@ -93,8 +93,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = generate_notes(
                 evidence_path=args.evidence,
                 output_dir=output_dir,
-                ollama_url=args.ollama_url or __import__("os").environ.get("OLLAMA_URL", "http://host.docker.internal:11434"),
-                model=args.model or __import__("os").environ.get("STAGE3_LLM_MODEL", "mistral:latest"),
+                ollama_url=args.ollama_url or __import__("os").environ.get("OLLAMA_URL", "http://llm-ollama:11434"),
+                model=args.model
+                or __import__("os").environ.get(
+                    "STAGE3_LLM_MODEL",
+                    "hf.co/mradermacher/Llama-3.1-EstLLM-8B-Instruct-1125-GGUF:Q5_K_M",
+                ),
             )
             print(json.dumps({"status": "ok", "output": str(output_dir), "model": result["model"]["name"]}, sort_keys=True))
             return 0

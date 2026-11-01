@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "l03_editing_v1",
+  "description": "Kolm inimesele võrreldavat toimetamislõiku loengu algusest, keskelt ja lõpust.",
+  "samples": [
+    {
+      "id": "sample_early_0004",
+      "label": "Algus: talitluspidevuse plaanide areng",
+      "selection_reason": "Lõik sisaldab rohkelt vahetuid sõna- ja fraasikordusi ning eesti- ja ingliskeelseid termineid.",
+      "segment_ids": ["seg_000013", "seg_000014", "seg_000015", "seg_000016", "seg_000017", "seg_000018"],
+      "preserved_phrases": ["disaster recovery-ks", "Enterprise Risk Managementi", "IT-süsteeme"]
+    },
+    {
+      "id": "sample_middle_0100",
+      "label": "Keskosa: hädaolukorraks valmistumine",
+      "selection_reason": "Lõik sisaldab kordusi, pooleli jäävat üleminekut ja äriprotsessi omanikega tehtava analüüsi kirjeldust.",
+      "segment_ids": ["seg_000202", "seg_000203", "seg_000204", "seg_000205", "seg_000206", "seg_000207", "seg_000208"],
+      "preserved_phrases": ["talituspidevuse plaanidele", "äriprotsesside omanikud"]
+    },
+    {
+      "id": "sample_late_0155",
+      "label": "Lõpuosa: intsidendile reageerimine ja taastamine",
+      "selection_reason": "Lõik sisaldab palju kordusi ning võimalikke ASR-i terminivigu, mida toimetaja ei tohi vaikimisi parandada.",
+      "segment_ids": ["seg_000379", "seg_000380", "seg_000381", "seg_000382", "seg_000383", "seg_000384"],
+      "preserved_phrases": ["business continualt management'iga", "reaktsioon intsidendile"]
+    }
+  ]
+}

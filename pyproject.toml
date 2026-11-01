@@ -13,6 +13,8 @@ dependencies = []
 lecture-notes = "lecture_notes.cli:main"
 lecture-notes-asr = "lecture_notes.asr_benchmark:main"
 lecture-notes-stage3 = "lecture_notes.stage3:main"
+lecture-notes-editor = "lecture_notes.simple_transcript_editor:main"
+lecture-notes-full-notes = "lecture_notes.full_notes_generator:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

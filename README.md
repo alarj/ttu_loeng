@@ -17,6 +17,8 @@ Koostaja: AI (OpenAI Codex), kasutaja kinnitatud lähteülesande ja tehnilise sp
 
 Rakendus koostab Echo360 loengusalvestisest, ainekavast ja slaididest iseseisvalt loetava eestikeelse ülikoolikonspekti. Selle eesmärk on vähendada pika loengu läbivaatamise ja õppematerjaliks vormistamise tööd, säilitades samal ajal väidete seose loengulõikude, ajatemplite, slaidide ning ainekava nõuetega. Konteineripõhine töövoog hangib loengu materjalid, loob ajatemplitega transkripti, toimetab selle eraldi kihis ning koostab kontrollitavate tõendite alusel Markdowni ja PDF-i. Täpne eesmärk ja nõuded on kirjeldatud [lähteülesandes](docs/lahteylesanne.md) ning arhitektuur, töövoog ja mudelivalikud [tehnilises spetsifikatsioonis](docs/tehniline_spek.md).
 
+Loengu 3 tervikliku konspekti katse kasutab lokaalset EstLLM-i ning annab mudelile ainekava asjakohase osa, kogu ajatemplitega algtranskripti ja videost eraldatud slaidiandmed. Näidiskonspekti ega toimetatud transkripti mudeli faktilise sisendina ei kasutata. Katse prompt asub failis [`prompts/konspekt.md`](prompts/konspekt.md); tulemuseks oodatakse üht terviklikku Markdown-konspekti ning konspekti mahule ei seata tokenipõhist väljundipiiri.
+
 ## 4. Hetkeseis
 
 Teostatud on Etapp 1 Echo360 importeri spike’i esimene osa:
@@ -36,7 +38,7 @@ Echo transkript ei sisaldu mängija algses andmeobjektis ega `captions`-väljas.
 
 Rakenduse praegune eestikeelsete loengute töövoog ei päri, laadi, säilita ega töötle Echo automaattranskripti. Seda ei kasutata ka diagnostikaks või võrdluskihina; eestikeelne ajatemplitega transkript luuakse otse audiost projekti ASR-iga. Praegune teostus vastab sellele otsusele: `src/` all puudub Echo transkripti endpoint'i kasutus.
 
-Loengu 3 esimene täispikk TalTechNLP töö käivitati 31.10.2026 asünkroonselt konteineris `ttu-loeng-l03-full-asr`. Töö olek on failis `/srv/ttu-loeng/outputs/jobs/l03/transcript/taltechnlp-turbo-et-int8/run.json`; tulemused ja audio eemaldamise kontroll lisatakse dokumentatsiooni pärast töö lõppu.
+Loengu 3 esimene täispikk TalTechNLP töö lõpetas 31.10.2026 edukalt. Tulemuses on 447 segmenti ja sõnataseme ajad kogu 02:15:29 pikkuse salvestise kohta. Kolme CPU-lõimega töö kestis 6033,696 sekundit, reaalajakordaja oli 0,7392 ning ajutine lähteaudio eemaldati. Püsivad failid asuvad `/srv/ttu-loeng/outputs/jobs/l03/transcript/taltechnlp-turbo-et-int8/` all.
 
 Kvaliteedimõõdikuid ei fabritseerita: WER ja CER arvutatakse ainult `human_verified` referentstekstiga lõikudel. Seetõttu on tehniline võrdlus valmis, kuid Etapp 2 kvaliteedi otsustusvärav ootab inimese kontrollitud referentstranskriptsiooni.
 
@@ -48,11 +50,13 @@ Etapi kontrollitud sisendid, artefaktid ja otsustusvärava seis on dokumenteerit
 
 Esimene `mistral:latest` vertikaalne jooks lõpetas tehniliselt edukalt 65 minuti ja 31 sekundiga, kuid valideerimise olek oli `needs_review`: viidati ainult kolmele tõendile viiest, slaidi ei lisatud ning peatükk ei olnud iseseisvalt loetav konspekt. Etapp 3 kvaliteedi otsustusvärav on seetõttu avatud.
 
-Järgmise sisukatse põhikandidaat on TartuNLP ja TalTechNLP eesti keele jaoks edasi treenitud `tartuNLP/Llama-3.1-EstLLM-8B-Instruct-1125`. Sama mudelit hinnatakse esmalt transkripti konservatiivsel toimetamisel ja seejärel tõendipõhise konspektipeatüki koostamisel. Need jäävad eraldi tööetappideks: muutmata ajatemplitega ASR-transkript → kordustest ja kõnetäidetest puhastatud, kuid sisuliselt täielik toimetatud transkript → ainekava ning allikatega seotud konspekt. EstLLM-i ei ole veel alla laaditud ega selle projekti jaoks käivitatud; mudelivalik lukustatakse alles inimese kontrollitud katse järel.
+Transkripti toimetamise kandidaat on TartuNLP ja TalTechNLP eesti keele jaoks edasi treenitud `tartuNLP/Llama-3.1-EstLLM-8B-Instruct-1125`. Projekti Ollama hoidlas on selle kogukonna loodud Q5_K_M GGUF-kvant. Toimetaja annab mudelile järjestikuse ASR-tekstilõigu tavalise tekstina ja palub lihtsa eestikeelse promptiga eemaldada tarbetud kordused ning korrastada lauselõpud. Mudel tagastab tavalise kirjakeelse teksti; algne ajatemplitega ASR-transkript jääb muutmata. Katse on kirjeldatud failis [`docs/transkripti_toimetamise_proov.md`](docs/transkripti_toimetamise_proov.md).
+
+Esimene lihtsa promptiga katselõik oli loetav, kuid mudel jättis välja kaks erialaterminit. Sama lõigu korduskatse lisas prompti lühikese terminite säilitamise nõude; `disaster recovery` ja `Enterprise Risk Management` jäid seejärel teksti alles. Tulemus ootab inimese kinnitust enne töövoo laiendamist.
 
 Tõendipakett säilitab slaidi runtime-asukoha kõrval Markdowni failist lähtuva suhtelise pilditee. Seetõttu on mustand koos runtime’i tööstruktuuriga avatav ka väljaspool konteinerit; generaator ei kirjuta konteinerisisest `/runtime` teed avaldatavasse Markdowni.
 
-Kasutaja lisas 31.10.2026 88 slaidiga PowerPointi faili [`docs/initial_materials/L03_slaidikandidaat.pptx`](docs/initial_materials/L03_slaidikandidaat.pptx). Pealkirja, kirjelduse ja põgusa sisukontrolli järgi on see tõenäoliselt loengu 3 slaidipakk, kuid faili täpne päritolu ning vastavus salvestises kasutatud slaididele ei ole teada. Edasises slaiditöötluses tuleb see esmalt esitlusvideos nähtuga võrrelda; erinevusi ei tohi oletusega lahendada. Varasem Etapp 3 proov jääb ajalooliselt videost eraldatud kaadritel põhinevaks.
+Kasutaja antud 88 slaidiga PowerPointi fail säilib lähtekomplektis, kuid jääb esialgsest töövoost kõrvale, sest selle täpne vastavus salvestises kasutatud slaididele pole teada. Slaidid võetakse videost: toimetatud transkript võib sisaldada kõiki tuvastatud erinevaid slaide nende kronoloogilises asukohas, konspekti valitakse ainult õppesisu toetavad skeemid, tabelid, joonised ja muud vajalikud slaidid.
 
 ## 5. Käivitamine
 
@@ -180,8 +184,8 @@ Manifestid kirjutatakse atomaarse failivahetusega. Sessiooniküpsiseid, CloudFro
 - Audio laaditakse alla ainult teadliku `--download-audio` valikuga runtime’i `work/` kataloogi ja kustutatakse pärast edukat või nurjunud jooksu. `--keep-audio` säilitab selle ainult teadlikuks veaotsinguks. Täisvideot vaikimisi ei salvestata.
 - Oracle’i või AWS-i failisalvestus on võimalik tulevikusuund, kuid ei kuulu praeguse MVP skoopi.
 - Echo slide deck’i import pole veel teostatud; selle puudumine märgitakse eraldi olekuna.
-- Kasutaja antud PPTX-slaidikandidaadi import, tekstikihi eraldamine ning videos nähtava slaidisisu ja -järjestusega võrdlemine pole veel teostatud.
-- PPTX-i puudumise, kinnitamata vastavuse või tuvastatud versioonierinevuse korral jääb videost slaidikaadrite eraldamine vajalikuks allikaks.
+- PPTX-slaidikandidaat on esialgsest töövoost teadlikult kõrvale jäetud; slaidiallikas on video.
+- Videost tuleb veel tuvastada slaidivahetused ja eraldada puhtad kõrge kvaliteediga kaadrid kogu loengu ulatuses.
 - Kohaliku LLM-i väljund on mustand, mitte kinnitatud konspekt. Deterministlik kontroll kontrollib viidete ja slaidifailide olemasolu, kuid faktiline kontroll ja ASR-i kinnitamine vajavad inimese ülevaatust.
 - Transkripti toimetamise mudel ei tohi algset ASR-artefakti üle kirjutada. Toimetatud kiht peab säilitama seose algsegmentide ja ajatemplitega ning sellel on konspekti sünteesist eraldi prompt, skeem ja kontroll.
 - Mustandi deterministlik kontroll nõuab ka dokumendi päritolu esimese pealkirjana, sisukorda ja kõigi tõendipaketis märgitud katvuslünkade sõnaselget esitamist.

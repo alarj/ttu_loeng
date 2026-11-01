@@ -35,7 +35,7 @@ Kontrollteema on ICM0032 ainekava punkt 3.e „intsidentide haldamine, reageerim
 | Slaidid | videost 30-sekundilise sammuga eraldatud 10 kaadrit; tõenditeks valiti 3 |
 | Slaidide ajad | `01:55:00`, `01:56:30`, `01:59:00` |
 
-Echo ei paku selle loengu juures eraldi slide deck’i. Slaidid eraldati 360p esitlusvideost; 92 498 488-baidine ajutine video eemaldati pärast töötlust. Kasutaja lisas võimaliku loengu 3 slaidipaki pärast selle vertikaalse proovi tegemist, mistõttu käesoleva ajaloolise proovi tõendid ja tulemused põhinevad endiselt videokaadritel. Järgmises proovis tuleb esmalt võrrelda slaidikandidaati salvestises nähtuga. Alles kinnitatud vastavuse ulatuses võib selle sisu kasutada ja videokaadreid ajajoonega joondamiseks rakendada; lahknevused tuleb eraldi dokumenteerida.
+Echo ei paku selle loengu juures eraldi slide deck’i. Slaidid eraldati 360p esitlusvideost; 92 498 488-baidine ajutine video eemaldati pärast töötlust. Edasine esialgne töövoog kasutab samuti videost võetud slaidikaadreid. Kasutaja antud PPTX säilib lähtekomplektis, kuid seda praegu ei impordita ega joondada.
 
 ## 5. Tõendipaketi tulemus
 
@@ -121,8 +121,8 @@ Etapp 3 otsustusvärav jäi seega avatuks. Tehniline ahel töötas lõpuni, kuid
 
 ## 8. Järgmised sammud
 
-1. oodata ära kogu loengu muutmata ajatemplitega TalTechNLP transkriptsioon ning kontrollida väljundid ja ajutise audio eemaldamine;
-2. koostada inimese kontrollitav transkripti toimetamise katsekomplekt ning hinnata põhikandidaati `tartuNLP/Llama-3.1-EstLLM-8B-Instruct-1125` korduste ja kõnetäidete eemaldamisel, lausepiiride parandamisel ning sisu ja ajaseoste säilitamisel;
+1. lasta inimesel pisteliselt kontrollida valminud kogu loengu muutmata ajatemplitega TalTechNLP transkriptsiooni;
+2. hinnata lihtsa vabatekstipromptiga EstLLM-i toimetatud katselõiku inimese võrdluse abil;
 3. ehitada pipeline-image uuesti ja koostada tõendipakett praeguse skeemi järgi, et `markdown_path` väärtused jõuaksid runtime’i;
 4. korrata ühe teema konspektikatset EstLLM-iga, kasutades eraldi sünteesiprompti ja praegust valideerijat; teist Mistrali jooksu ei kavandata;
 5. leida loengust täiendav lõik teavituse ja kriisisuhtluse kohta või märkida need kogu loengu järel tõendatult katmata;
