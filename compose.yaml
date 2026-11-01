@@ -43,15 +43,14 @@ services:
       - ${TTU_LOENG_RUNTIME_ROOT:?Set TTU_LOENG_RUNTIME_ROOT to a writable host directory}:${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
     command: ["--help"]
 
-  pipeline:
+  slides:
     build:
       context: .
-      dockerfile: Dockerfile.pipeline
+      dockerfile: Dockerfile.slides
       args:
         PYMUPDF_VERSION: ${PYMUPDF_VERSION:?Set PYMUPDF_VERSION in .env}
-    profiles: ["pipeline"]
-    depends_on:
-      - llm-ollama
+        PILLOW_VERSION: ${PILLOW_VERSION:?Set PILLOW_VERSION in .env}
+    profiles: ["slides"]
     env_file:
       - path: .env
         required: false
@@ -61,78 +60,9 @@ services:
       HOME: ${TTU_LOENG_HOME:-/runtime/home}
       USER: ${TTU_LOENG_USER:-ttu-loeng}
       LOGNAME: ${TTU_LOENG_LOGNAME:-ttu-loeng}
-      OLLAMA_URL: ${OLLAMA_URL:-http://llm-ollama:11434}
-      STAGE3_LLM_MODEL: ${STAGE3_LLM_MODEL:-hf.co/mradermacher/Llama-3.1-EstLLM-8B-Instruct-1125-GGUF:Q5_K_M}
     user: "${TTU_LOENG_UID:-1000}:${TTU_LOENG_GID:-1000}"
-    cpus: ${PIPELINE_WORKER_CPUS:-3.0}
+    cpus: ${SLIDES_WORKER_CPUS:-3.0}
     volumes:
       - ${TTU_LOENG_RUNTIME_ROOT:?Set TTU_LOENG_RUNTIME_ROOT to a writable host directory}:${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
       - ./docs/initial_materials:/materials:ro
-    command: ["--help"]
-
-  full-notes:
-    build:
-      context: .
-      dockerfile: Dockerfile.pipeline
-      args:
-        PYMUPDF_VERSION: ${PYMUPDF_VERSION:?Set PYMUPDF_VERSION in .env}
-    profiles: ["pipeline"]
-    depends_on:
-      - llm-ollama
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      TTU_LOENG_REPO_ROOT: /app
-      TTU_LOENG_RUNTIME_ROOT: ${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
-      HOME: ${TTU_LOENG_HOME:-/runtime/home}
-      USER: ${TTU_LOENG_USER:-ttu-loeng}
-      LOGNAME: ${TTU_LOENG_LOGNAME:-ttu-loeng}
-      OLLAMA_URL: ${OLLAMA_URL:-http://llm-ollama:11434}
-      STAGE3_LLM_MODEL: ${STAGE3_LLM_MODEL:-hf.co/mradermacher/Llama-3.1-EstLLM-8B-Instruct-1125-GGUF:Q5_K_M}
-    user: "${TTU_LOENG_UID:-1000}:${TTU_LOENG_GID:-1000}"
-    cpus: ${PIPELINE_WORKER_CPUS:-3.0}
-    volumes:
-      - ${TTU_LOENG_RUNTIME_ROOT:?Set TTU_LOENG_RUNTIME_ROOT to a writable host directory}:${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
-    entrypoint: ["lecture-notes-full-notes"]
-    command: ["--help"]
-
-  llm-ollama:
-    image: ollama/ollama@sha256:487324a9312240e3e122446f351b1f1e3f68d884ef854c246db2e08792440d94
-    profiles: ["editing", "pipeline"]
-    environment:
-      OLLAMA_HOST: 0.0.0.0:11434
-      HOME: /home/ollama
-      USER: ${TTU_LOENG_USER:-ttu-loeng}
-      LOGNAME: ${TTU_LOENG_LOGNAME:-ttu-loeng}
-    user: "${TTU_LOENG_UID:-1000}:${TTU_LOENG_GID:-1000}"
-    cpus: ${EDITOR_OLLAMA_CPUS:-3.0}
-    volumes:
-      - ${TTU_LOENG_RUNTIME_ROOT:?Set TTU_LOENG_RUNTIME_ROOT to a writable host directory}/models/ollama:/home/ollama/.ollama
-
-  editor:
-    build:
-      context: .
-      dockerfile: Dockerfile.pipeline
-      args:
-        PYMUPDF_VERSION: ${PYMUPDF_VERSION:?Set PYMUPDF_VERSION in .env}
-    profiles: ["editing"]
-    depends_on:
-      - llm-ollama
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      TTU_LOENG_REPO_ROOT: /app
-      TTU_LOENG_RUNTIME_ROOT: ${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
-      HOME: ${TTU_LOENG_HOME:-/runtime/home}
-      USER: ${TTU_LOENG_USER:-ttu-loeng}
-      LOGNAME: ${TTU_LOENG_LOGNAME:-ttu-loeng}
-      EDITOR_OLLAMA_URL: ${EDITOR_OLLAMA_URL:-http://llm-ollama:11434}
-      EDITOR_LLM_MODEL: ${EDITOR_LLM_MODEL:-hf.co/mradermacher/Llama-3.1-EstLLM-8B-Instruct-1125-GGUF:Q5_K_M}
-    user: "${TTU_LOENG_UID:-1000}:${TTU_LOENG_GID:-1000}"
-    cpus: ${EDITOR_WORKER_CPUS:-1.0}
-    volumes:
-      - ${TTU_LOENG_RUNTIME_ROOT:?Set TTU_LOENG_RUNTIME_ROOT to a writable host directory}:${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
-    entrypoint: ["lecture-notes-editor"]
     command: ["--help"]

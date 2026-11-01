@@ -1,383 +1,255 @@
-# Lähteülesanne: loengusalvestisest ainekavapõhise ülikoolikonspekti koostamine
+# Lähteülesanne: Echo360 loengu ajatemplitega transkript koos slaididega
 
 ## 1. Dokumendi päritolu
 
-Koostaja: AI (OpenAI Codex), kasutaja kirjeldatud vajaduste, vestluses täpsustatud nõuete ning projekti registreeritud algmaterjalide põhjal.
+Koostaja: AI (OpenAI Codex) kasutaja 1.11.2026 kinnitatud uue ülesandepüstituse ja projekti tegelike katsetulemuste põhjal. Dokument asendab varasema konspektirakenduse lähteülesande; varasem versioon säilib Git-ajaloos märgendi `ver0.1` all.
 
 ## 2. Sisukord
 
 - [3. Dokumendi eesmärk](#3-dokumendi-eesmärk)
-- [4. Probleem](#4-probleem)
-- [5. Eesmärk](#5-eesmärk)
-- [6. Esmane kasutusjuht](#6-esmane-kasutusjuht)
+- [4. Probleem ja kontrollitud lähteolukord](#4-probleem-ja-kontrollitud-lähteolukord)
+- [5. Rakenduse eesmärk](#5-rakenduse-eesmärk)
+- [6. Põhimõisted](#6-põhimõisted)
 - [7. Kasutaja põhivoog](#7-kasutaja-põhivoog)
 - [8. Sisendid](#8-sisendid)
-- [9. Konspekti sisulised nõuded](#9-konspekti-sisulised-nõuded)
-- [10. Slaidide nõuded](#10-slaidide-nõuded)
-- [11. Allikad ja jälgitavus](#11-allikad-ja-jälgitavus)
-- [12. Kõnelejad ja diariseerimine](#12-kõnelejad-ja-diariseerimine)
-- [13. Väljundid](#13-väljundid)
-- [14. Inimese ülevaatus](#14-inimese-ülevaatus)
-- [15. Mittefunktsionaalsed nõuded](#15-mittefunktsionaalsed-nõuded)
-- [16. Esimese MVP ulatus](#16-esimese-mvp-ulatus)
-- [17. MVP-st välja jääv](#17-mvp-st-välja-jääv)
-- [18. Esimese kontrolljuhtumi vastuvõtukriteeriumid](#18-esimese-kontrolljuhtumi-vastuvõtukriteeriumid)
-- [19. Edu mõõtmine](#19-edu-mõõtmine)
-- [20. Edasised etapid](#20-edasised-etapid)
+- [9. Funktsionaalsed nõuded](#9-funktsionaalsed-nõuded)
+- [10. Väljundid](#10-väljundid)
+- [11. Välise keelemudeliga jätkamine](#11-välise-keelemudeliga-jätkamine)
+- [12. Mittefunktsionaalsed nõuded](#12-mittefunktsionaalsed-nõuded)
+- [13. MVP2 ulatusest välja jääv](#13-mvp2-ulatusest-välja-jääv)
+- [14. Esimene kontrolljuhtum](#14-esimene-kontrolljuhtum)
+- [15. Vastuvõtukriteeriumid](#15-vastuvõtukriteeriumid)
 
 ## 3. Dokumendi eesmärk
 
-Käesolev dokument kirjeldab rakenduse eesmärki, kasutusjuhtu, sisendeid, väljundeid, sisulisi nõudeid ja vastuvõtukriteeriume. Tehnilised teostusotsused on eraldi dokumendis [`tehniline_spek.md`](tehniline_spek.md).
+Käesolev dokument määrab rakenduse eesmärgi, ulatuse, sisendid, väljundid ja vastuvõtukriteeriumid. Tehniline teostus on kirjeldatud failis [`tehniline_spek.md`](tehniline_spek.md). Slaidide tuvastamise, töötlemise ja transkriptiga sidumise detailne lahendus on eraldi failis [`slaiditootlus.md`](slaiditootlus.md).
 
-## 4. Probleem
+## 4. Probleem ja kontrollitud lähteolukord
 
-TalTechi õppeaine ICM0032 „IT valitsemine ja juhtimine“ loengud on Echo360-s salvestatud. Loengud on enamasti pikad ja rahuliku tempoga. Kasutaja lähtehinnangu järgi ei sobi Echo360 automaatne transkriptsioon eestikeelse kõne jaoks ega anna usaldusväärset õppematerjali. 31.10.2026 dünaamilisest Echo transkripti API-st kontrollitud ICM0032 loengu 3 automaattranskript oli valdavalt ingliskeelne ja eestikeelse loengu kohta sisuliselt kasutuskõlbmatu. Ingliskeelse loengu Echo transkriptsiooni kvaliteeti ei ole kontrollitud; see võib olla kasutatav ning käesolev järeldus ei laiene sellele. Kasutaja antud näidistranskriptis nimetatud „videoloengu automaatsubtiitrite“ platvorm ei ole teada ja nende seost Echo360-ga ei eeldata.
+TalTechi eestikeelsed loengud on Echo360-s salvestatud, kuid kontrollitud ICM0032 loengu automaattranskript oli valdavalt ingliskeelne ja eestikeelse kõne kohta sisuliselt kasutuskõlbmatu. Echo väljundit ei kasutata praeguses eestikeelsete loengute töövoos põhiteksti ega diagnostilise võrdlusmaterjalina. Ingliskeelsete loengute Echo transkriptsiooni kvaliteeti ei ole kontrollitud ning järeldus ei laiene neile.
 
-Üliõpilasel on vaja loengust iseseisvalt loetavat ülikoolikonspekti, mis:
+Projektis kontrollitud TalTechNLP mudel `TalTechNLP/whisper-large-v3-turbo-et-verbatim` koostas 2 tunni ja 15 minuti pikkusest loengust täieliku ajatemplitega transkripti 1 tunni ja 40 minutiga. Väljundis oli 15 064 sõna ja 447 segmenti. Kasutaja pistelise kuulamiskontrolli järgi oli tekst hästi loetav, kõne sisu täpselt säilinud ning eesti- ja ingliskeelsed erialaterminid korrektsed. Täielikku inimese kontrollitud sõna-sõnalist kvaliteedimõõtmist ei ole veel tehtud.
 
-- ei ole pelgalt kronoloogiline transkriptsiooni kokkuvõte;
-- keskendub ainekavas määratud teemadele ja alam-õpiväljunditele;
-- toob esile testis või eksamil olulise materjali;
-- säilitab õppejõu selgitused, näited, võrdlused ja rõhuasetused;
-- sisaldab olulisi slaide või vähemalt viiteid neile;
-- võimaldab kontrollida, millisest loengukohast või slaidist väide pärineb.
+Rakendus keskendub olemasoleval serveril kontrollitud töövoole: ajatemplitega transkriptsiooni loomisele ja selle sidumisele loenguvideos nähtud slaididega.
 
-## 5. Eesmärk
+## 5. Rakenduse eesmärk
 
-Luua samas Ubuntu serveris töötav rakendus, mis võtab sisendiks Echo360 avaliku kursuse- või loengulingi, ainekava ja loengumaterjalid ning koostab ühe loengu kohta kvaliteetse eestikeelse konspekti.
+Luua olemasoleval Ubuntu serveril konteinerites töötav rakendus, mis:
 
-Konspekt peab olema kasutatav iseseisva õppematerjalina. Allikaviited täiendavad konspekti ja võimaldavad kontrolli, kuid konspekti mõistmine ei tohi eeldada pidevat salvestise või slaidide avamist.
+1. võtab sisendiks Echo360 avaliku loengukogumiku lingi;
+2. kuvab kogumikus olevad loengud ja nende salvestise oleku;
+3. loob kasutaja valitud eestikeelsest loengust TalTechNLP mudeliga täieliku ajatemplitega transkripti;
+4. kontrollib, kas loeng sisaldab slaide;
+5. tuvastab slaidide järjekorra ja ligikaudsed vahetusajad;
+6. kasutab vaikimisi videost saadud slaidipilte;
+7. võimaldab kasutajal anda sama loengu slaidid eraldi PPT-, PPTX- või PDF-failina;
+8. seob kinnitatud vastavusega slaidid transkripti õigesse ligikaudsesse kohta;
+9. salvestab inimesele loetava tulemuse, mida saab soovi korral anda välisele suurele keelemudelile edasiseks toimetamiseks või konspekti koostamiseks.
 
-## 6. Esmane kasutusjuht
+Rakendus ei kirjuta transkripti keeleliselt ümber ega koosta ise konspekti. Kõnetuvastust võib suunata loengupõhise erialaterminite loendiga ning lõppväljundist eemaldatakse kokkulepitud eraldiseisvad täitesõnad.
 
-Esimene kontrolljuhtum on ICM0032 loeng 3 „Talitluspidevuse ja avariitaaste planeerimine“.
+## 6. Põhimõisted
 
-Kontrolljuhtumi materjalid:
-
-- Echo360 avalik kursuselink: <https://echo360.org.uk/section/6f6fcb6b-cd42-4328-81db-eb3e30df9151/public>;
-- kursuse Echo360 sektsioon pärast külalissessiooni loomist: `fe0e6009-e8d0-4f61-973f-4d231cbd1ff6`;
-- laiendatud ainekava [`initial_materials/AINEKAVA 1.237978_Laiendatud ainekava ICM0032 2026-10-09 v9.pdf`](initial_materials/AINEKAVA%201.237978_Laiendatud%20ainekava%20ICM0032%202026-10-09%20v9.pdf);
-- näidiskonspekt [`initial_materials/L03_konspekt.docx.pdf`](initial_materials/L03_konspekt.docx.pdf);
-- kasutaja antud tõenäoline loengu 3 slaidipakk [`initial_materials/L03_slaidikandidaat.pptx`](initial_materials/L03_slaidikandidaat.pptx), mille täpne päritolu ja vastavus salvestises kasutatud slaididele ei ole teada;
-- Echo360 salvestis, slaidid ja muud loengu juures avalikult kättesaadavad materjalid.
-
-Näidiskonspekt on stiili, detailsuse ja katvuse võrdlusmaterjal. Seda ei käsitleta automaatselt faktilise tõeallikana. Slaidikandidaati ei käsitleta originaalslaidide ega videos kasutatud slaidiversiooni tõendina. Selle kasutamine slaidisisu allikana eeldab esmalt võrdlust loengusalvestisega; täpne ajastus tuleb seejärel kontrollida salvestisega joondamise kaudu.
+- **Echo360 loengukogumik** — avaliku `/public` lingiga Echo360 kursuse või sektsiooni vaade, mis sisaldab loengute nimekirja.
+- **Transkriptsioonisegment** — TalTechNLP kõnetuvastuse loodud tekstilõik koos algus- ja lõpuajaga.
+- **Slaidiviide** — transkripti lisatud tähis, mis näitab slaidi numbrit, pealkirja, ligikaudset ilmumisaega ja pildifaili.
+- **Eraldi slaidifail** — kasutaja antud PPT-, PPTX- või PDF-fail, mille vastavust loenguvideos kasutatud slaididele tuleb kontrollida.
+- **Staatiline slaid** — üks terviklik slaidipilt ilma PowerPointi animatsiooni vaheetappideta.
 
 ## 7. Kasutaja põhivoog
 
-1. Kasutaja lisab või valib Echo360 avaliku kursuselingi.
-2. Rakendus kuvab kursuse loengute nimekirja.
-3. Kasutaja valib ühe loengu.
-4. Kasutaja lisab või valib kursuse ainekava.
-5. Rakendus hangib loengu audio, slaidid ja metaandmed.
-6. Rakendus loob eestikeelse ajatemplitega transkriptsiooni.
-7. Vajaduse korral eristatakse kõnelejad.
-8. Rakendus seob transkriptsiooni, slaidid ja ainekava alam-õpiväljundid.
-9. Rakendus koostab konspekti mustandi ning märgib ebakindlad kohad.
-10. Kasutaja saab konspekti ja selle allikaid üle vaadata.
-11. Rakendus ekspordib kinnitatud konspekti Markdowni ja PDF-i.
+1. Kasutaja sisestab Echo360 avaliku loengukogumiku lingi.
+2. Rakendus loob Echo360 avaliku külalissessiooni ja kuvab kogumiku loengud.
+3. Kasutaja valib töödeldava loengu.
+4. Kasutaja võib lisada sama loengu slaidid PPT-, PPTX- või PDF-failina.
+5. Rakendus kontrollib, kas valitud loengul on kasutatav salvestis ja audio.
+6. Rakendus käivitab TalTechNLP kõnetuvastuse taustatööna, edastab valitud loengu erialaterminid mudelile hotword'idena ja eemaldab pärast tuvastust kokkulepitud eraldiseisvad täitesõnad.
+7. Rakendus kontrollib eraldi, kas loeng sisaldab slaide.
+8. Slaidide olemasolul tuvastab rakendus nende järjekorra ja ligikaudsed vahetusajad.
+9. Eraldi slaidifaili olemasolul kontrollib rakendus selle vastavust videos nähtud slaididele.
+10. Rakendus lisab slaidiviited olemasolevate transkriptsioonisegmentide vahele; segmente ei lõhuta ega muudeta.
+11. Rakendus salvestab transkripti, slaidipildid, slaidide ajastuse ja töö metaandmed.
+12. Ajutine audio ja video eemaldatakse nii eduka kui nurjunud töötluse järel.
 
 ## 8. Sisendid
 
 ### 8.1. Kohustuslikud sisendid
 
-- Echo360 avalik `/public` juurdepääsulink või juba rakenduses registreeritud kursus;
-- kasutaja valitud loeng;
-- ainekava PDF või muu tekstina loetav ainekavafail.
+- Echo360 avalik `/public` loengukogumiku link;
+- kasutaja valitud loeng.
 
-### 8.2. Automaatselt hangitavad sisendid
+### 8.2. Echo360-st saadavad sisendid
 
-- kursuse ja loengu pealkiri;
+- kogumiku ja loengu nimi;
 - loengu kuupäev ja kestus;
-- audio- või videovoog;
-- loengu slaidid või esitluse kujutised;
-- loengu ja meedia tehnilised identifikaatorid.
+- loengu ning meedia tehnilised identifikaatorid;
+- audioallikas;
+- videoallikad;
+- Echo360 eraldi slaidimaterjal, kui see on olemas.
 
-Echo360 enda automaattranskriptsiooni rakenduse praegune eestikeelsete loengute töövoog ei hangi ega säilita. Kontrolljuhtumis oli see eestikeelse kõne kohta sisuliselt kasutuskõlbmatu ning selle laadimine ei anna konspekti koostamisele ega kvaliteedikontrollile väärtust. Ingliskeelsete loengute võimalikku teistsugust töövoogu ei ole hinnatud.
+### 8.3. Valikuline sisend
 
-### 8.3. Valikulised sisendid
+Kasutaja võib lisada sama loengu slaidid:
 
-- õppejõu nimi ja kõneleja vihjed;
-- terminisõnastik;
-- õppejõu lisamaterjalid;
-- varasem sama loengu konspekt kvaliteedi võrdlemiseks;
-- inimese parandatud transkriptsioonilõigud.
+- PPT-vormingus;
+- PPTX-vormingus;
+- PDF-vormingus.
 
-## 9. Konspekti sisulised nõuded
+Eraldi slaidifaili olemasolu ei tõenda selle vastavust loengus kasutatud slaididele. Vastavus tuleb kontrollida video põhjal. Kui vastavust ei saa kinnitada, ei esitata eraldi faili slaide videos kasutatud slaididena.
 
-### 9.1. Iseseisev loetavus
+## 9. Funktsionaalsed nõuded
 
-Konspekt peab sisaldama kogu teema mõistmiseks vajalikku põhisisu. Slaid või salvestis ei tohi olla kohustuslik puuduva seletuse asendaja.
-
-### 9.2. Teemapõhine ülesehitus
-
-Konspekt ei pea järgima loengu kronoloogilist järjekorda. Sama teema eri aegadel käsitletud osad võib koondada ühe peatüki alla.
-
-Peatükkide järjestus peab lähtuma eelkõige:
-
-1. ainekava alam-õpiväljunditest;
-2. mõistete ja seoste loogikast;
-3. õppimise seisukohast sobivast järjekorrast;
-4. testis või eksamil olulisest fookusest.
-
-Algse loengu kronoloogia peab säilima allikaviidetes.
-
-### 9.3. Ainekavaga sidumine
+### 9.1. Loengukogumiku ja salvestise leidmine
 
 Rakendus peab:
 
-- eraldama valitud loengule vastavad teemad ja alam-õpiväljundid;
-- näitama, millised alam-õpiväljundid on konspektis kaetud;
-- tooma välja katmata või ebapiisava allikmaterjaliga punktid;
-- eristama põhiloenguid, loengukimbu teste, külalisloenguid ja muud ainekavas kirjeldatud konteksti.
+- looma standardse HTTP-kliendiga Echo360 avaliku külalissessiooni;
+- kuvama kogumiku loengute nimekirja;
+- säilitama Echo algsed ajatuse lipud ning tegelikest meediakirjetest tuletatud salvestise oleku eraldi;
+- lubama töötlemiseks valida ainult loengu, mille vajalik meedia on kättesaadav;
+- mitte salvestama sessiooniküpsiste väärtusi ega signeeritud meedia-URL-ide saladusi.
 
-### 9.4. Eksamifookus
+### 9.2. Kõnetuvastus
 
-Konspekt võib sisaldada plokke „Eksamifookus“, „Peab oskama“ ja „Ei ole vaja pähe õppida“ ainult siis, kui väide tuleneb:
+Rakendus peab:
 
-- õppejõu selgest ütlusest loengus;
-- ainekava selgest nõudest;
-- mõlemast allikast.
+- kasutama eestikeelse kõne tuvastamiseks projektis kontrollitud TalTechNLP mudelit;
+- töötlema kogu valitud loengu audio;
+- säilitama transkriptsioonisegmentide algus- ja lõpuajad;
+- säilitama võimalusel sõnataseme ajad;
+- eemaldama ainult kokkulepitud eraldiseisvad täitesõnad `noh`, vähemalt kahest `a`-st koosnevad häälitsused ja vähemalt kahest `ä`-st koosnevad häälitsused;
+- säilitama muu mudeli loodud teksti ning segmendi ajapiirid muutmata kujul;
+- salvestama kasutatud hotword-loendi kontrollsumma, kirjed ja eemaldatud täitesõnade arvu;
+- salvestama kasutatud mudeli, revisjoni, tööriistad, seadistuse, töö alguse, lõpu ja kestuse;
+- töötama taustal nii, et kasutaja saab töö olekut eraldi kontrollida.
 
-Rakendus ei tohi tuletada eksamifookust üksnes teema üldisest olulisusest ega keelemudeli hinnangust.
+### 9.3. Slaidide olemasolu ja allikas
 
-### 9.5. Õppejõu panus
+Rakendus peab enne slaiditöötlust eristama vähemalt järgmisi olukordi:
 
-Konspekt peab võimaluse korral säilitama:
+- Echo360 pakub eraldi slaidimaterjali;
+- esitlusvideos on slaidid;
+- video sisaldab ainult kaamerapilti või muud mitteslaidilist sisu;
+- slaide ei tuvastatud;
+- slaidide olemasolu jäi ebaselgeks.
 
-- õppejõu definitsioonid ja terminieelistused;
-- rõhutatud seosed ja vastandused;
-- praktilised näited ja juhtumid;
-- eksamijuhised;
-- hoiatavad erandid ja levinud vead;
-- olulised küsimused ning vastused.
+Slaidide olemasolu ei otsustata üksnes videofaili või Echo slaidiikooni olemasolu põhjal.
 
-Kõnekeelne kordus, pausid ja kõrvaline jutt tuleb eemaldada, kui need ei kanna õppesisu.
+Slaidid võetakse vaikimisi videost. Eraldi slaidifaili kasutatakse kvaliteetsema pildi ja teksti allikana ainult pärast videos nähtud slaididega vastavuse kontrollimist. Täpne töövoog on failis [`slaiditootlus.md`](slaiditootlus.md).
 
-### 9.6. Mõisted, tabelid ja joonised
+Video esmane slaidikontroll kasutab vaikimisi 20-sekundilise vahega kontrollkaadreid. Kontrollkaadrite võrdlus põhineb väikese halltoonides pildi digitaalsel sõrmejäljel, mitte kogu kaadri OCR-tekstil. Kui kahe järjestikuse põhikaadri vahel on pilt muutunud, otsib rakendus slaidi täpsema vahetusaja ainult selle 20-sekundilise vahemiku seest kahe-sekundilise sammuga. Mõlemad ajavahemikud peavad olema konfiguratsioonis muudetavad.
 
-Konspekt peab sobivas vormis esitama:
+OCR käivitatakse pärast slaidikandidaadi leidmist eelkõige pealkirjaalal. Kogu slaidi OCR-i kasutatakse ainult siis, kui pealkiri, pildisarnasus ja slaidide järjekord ei võimalda eraldi slaidifailiga vastavust piisavalt kontrollida.
 
-- olulised definitsioonid;
-- eesti- ja ingliskeelsed terminipaarid;
-- võrdlused;
-- protsessid ning loogilised ahelad;
-- olulised tabelid;
-- eksamil reprodutseeritavad või muul põhjusel kesksed joonised.
+Teadaolev piirang on, et täielikult ühe 20-sekundilise põhivahemiku sisse jääv väga lühike slaid või sama slaidi juurde naasev ajutine vahepilt võib jääda leidmata. Piirang peab olema dokumenteeritud töö konfiguratsioonis ja tulemuses.
 
-Joonist ei tohi tekstiga asendada, kui visuaalne kuju on ise õppesisu osa.
+### 9.4. Slaidiviidete lisamine
 
-### 9.7. Kordamisküsimused
+- Iga tuvastatud slaid saab järjestikuse numbri.
+- Võimaluse korral lisatakse slaidi pealkiri.
+- Slaidi ligikaudne ilmumisaeg võetakse videost.
+- Slaidiviide paigutatakse ajaliselt lähima transkriptsioonisegmendi piiri juurde.
+- Transkriptsioonisegmenti slaidiviite tõttu ei lõhuta.
+- Slaidi korduv näitamine võib viidata samale slaidile uue ilmumisajaga.
+- Kui videos slaide pole, valmib transkript ilma slaidiviideteta.
 
-Konspekti lõpus peavad olema kordamisküsimused. Esimeses versioonis toetatakse vähemalt:
+## 10. Väljundid
 
-- valikvastustega küsimusi;
-- õige vastuse märkimist;
-- küsimuse seost ainekava punkti ja konspekti peatükiga.
+### 10.1. Inimesele loetav põhiväljund
 
-Küsimuse õige vastus peab olema konspektis selgelt põhjendatav.
+UTF-8 Markdown-fail, mis sisaldab:
 
-## 10. Slaidide nõuded
+- loengu nime ja põhilisi metaandmeid;
+- ajatemplitega transkripti, millest on eemaldatud ainult kokkulepitud eraldiseisvad täitesõnad;
+- slaidivahetuste tähiseid;
+- slaidipilte või suhtelisi viiteid pildifailidele;
+- slaidide allika kirjeldust;
+- nähtavaid märkusi ebaselgete või kinnitamata vastavuste kohta.
 
-### 10.1. Slaidi lisamine konspekti
+### 10.2. Tööartefaktid
 
-Slaid või selle asjakohane väljalõige lisatakse konspekti pildina, kui:
+Rakendus säilitab:
 
-- slaid sisaldab olulist skeemi või joonist;
-- õppejõud ütleb, et joonist peab oskama reprodutseerida;
-- tabelit või seost on pildina lihtsam mõista;
-- slaid ise on oluline originaalne õppematerjal.
-
-### 10.2. Slaidile viitamine
-
-Kui slaidi pilt pole vajalik, peab konspektis olema võimalik säilitada:
-
-- slaidi number või püsiv identifikaator;
-- slaidi pealkiri, kui see on tuvastatav;
-- viide loenguosale, kus slaidi selgitatakse;
-- võimalusel link rakenduse slaidivaatesse.
-
-### 10.3. Väljajätmine
-
-Korduvad, tehnilised, tühjad või õppesisuta slaidid võib konspektist välja jätta. Väljajätmine ei tohi põhjustada ainekava olulise teema kadumist.
-
-## 11. Allikad ja jälgitavus
-
-### 11.1. Üldpõhimõte
-
-Allikaviide on kontrolli- ja süvenemisvahend. Konspekti põhitekst peab jääma ladusaks ning viiteid ei tohi esitada viisil, mis muudab teksti raskesti loetavaks.
-
-### 11.2. Viite sisu
-
-Olulise väite viide peab võimaluse korral sisaldama:
-
-- loengu identifikaatorit või pealkirja;
-- algus- ja lõpuaega;
-- kõnelejat;
-- slaidi numbrit või identifikaatorit;
-- ainekava punkti;
-- allika kindlust või ülevaatuse olekut.
-
-Näide:
-
-```text
-[L03 01:14:20–01:16:05 · S27 · AK 3.d]
-```
-
-### 11.3. Loengulõigu kiire avamine
-
-Rakenduse veebivaates peab viide võimaldama:
-
-- avada õige slaidi;
-- kuvada vastav transkriptsioonilõik;
-- alustada audio või video esitamist vahetult enne viidatud kohta;
-- peatada esituse pärast asjakohast lõiku või lubada kasutajal jätkata.
-
-Eksporditud Markdownis ja PDF-is peab säilima inimloetav ajatempel ka siis, kui interaktiivne rakendus pole kättesaadav.
-
-## 12. Kõnelejad ja diariseerimine
-
-TalTechi loengud on valdavalt ühe õppejõuga. Diariseerimine ei ole seetõttu iga loengu kohustuslik osa.
-
-Rakendus peab toetama vähemalt järgmisi režiime:
-
-- `single-speaker` — vaikimisi ühe õppejõuga loeng;
-- `automatic` — süsteem hindab, kas kõnelejaid on rohkem;
-- `multi-speaker` — diariseerimine on teadlikult sisse lülitatud.
-
-Mitme kõnelejaga loengus peab olema võimalik eristada vähemalt õppejõu, külalise ja auditooriumi küsimuste lõike. Automaatne isikunime määramine ei tohi olla vaikimisi usaldatud; ebakindel nimi jääb kinnitamata.
-
-Olemasoleva `err_video_to_text` projekti pyannote’i diariseerimise ja tekstisegmentide kõnelejatega sidumise kogemust tuleb analüüsida ning võimaluse korral taaskasutada. `err_video_to_text` kasutab põhitekstina ERR-i VTT-d ega paku TalTechi loengutele vajalikku põhitranskriptsiooni.
-
-## 13. Väljundid
-
-### 13.1. Lõppväljundid
-
-- UTF-8 Markdown-konspekt;
-- samast Markdowni sisust genereeritud PDF;
-- konspektis kasutatud slaidipildid;
-- allikaviited ja interaktiivse vaate lingid.
-
-DOCX ei kuulu väljundvormingute hulka.
-
-### 13.2. Tööartefaktid
-
-Rakendus peab säilitama auditeerimiseks vähemalt:
-
-- resolveri tulemuse;
-- loengu metaandmed;
-- transkriptsiooni ajatemplitega;
-- slaidide metaandmed;
-- kõnelejainfo, kui diariseerimist kasutati;
-- ainekava struktuuri;
-- väidete ja allikate seosed;
+- loengukogumiku resolveri tulemuse;
+- loengu ja meedia metaandmed;
+- algse ajatemplitega transkriptsiooni masinloetaval kujul;
+- slaidide olemasolu kontrolli tulemuse;
+- slaidide järjekorra, pealkirjad ja ajastuse;
+- püsivad slaidipildid;
+- valikulise slaidifaili teisendamise ja vastavuse kontrolli tulemuse;
 - mudelite, tööriistade ja konfiguratsiooni versioonid;
-- kvaliteedikontrolli tulemused;
-- töö kestused ja vead.
+- töö oleku, kestuse ja vead.
 
-## 14. Inimese ülevaatus
+Internetist uuesti hangitavat audiot ega videot püsivalt ei säilitata.
 
-Esimese versiooni eesmärk ei ole kõrvaldada inimese kontrolli. Rakendus peab vähendama kuulamis- ja vormistamistööd ning näitama ülevaatajale eelkõige:
+## 11. Välise keelemudeliga jätkamine
 
-- madala ASR-kindlusega lõigud;
-- terminoloogiliselt kahtlased kohad;
-- allikata või nõrga allikaga väited;
-- võimalikud vastuolud;
-- eksamifookuseks märgitud väited;
-- ainekava katmata punktid;
-- ebaselged kõnelejavahetused.
+Rakenduse Markdown-väljund peab olema terviklik ja arusaadava struktuuriga, et kasutaja saaks selle soovi korral anda Gemini, OpenAI või mõne muu suure välise mudeli sisendiks.
 
-## 15. Mittefunktsionaalsed nõuded
+Välise mudeli kasutamine, teenusepakkujale failide saatmine, transkripti keeleline ümberkirjutamine ja konspekti koostamine toimuvad rakendusest eraldi ning ei kuulu MVP2 töövoogu. Kokkulepitud täitesõnade reeglipõhine eemaldamine kuulub töövoogu.
 
-- Kõik projekti tekstifailid ja väljundid peavad olema UTF-8 kodeeringus.
+## 12. Mittefunktsionaalsed nõuded
+
 - Rakendus töötab olemasoleval ARM64 Ubuntu serveril ilma GPU-ta.
-- Rakendus peab töötama ühes või mitmes konteineris; ka esialgne CLI-põhine MVP käivitatakse konteineris.
-- Projekti avalik domeen kuulub `fun-o.eu` domeeni alla. Täpne hostinimi või alamdomeen kinnitatakse enne veebiliidese avaldamist.
-- Veebiserver on kõigile serveri projektidele ühine nginx. Selle praegune konfiguratsioon asub `fun_o` projektis kataloogis `/home/ubuntu/fun_o`; käesolev projekt ei juuruta eraldi avalikku nginx-serverit.
-- TLS-sertifikaate haldab Let’s Encrypt. Vajaduse korral lisatakse rakenduse uus alamdomeen olemasoleva sertifikaadihalduse kaudu sertifikaadi katvusse.
-- Pikk töötlusaeg on vastuvõetav; prioriteet on kvaliteet ja jälgitavus.
-- CPU-rasked etapid peavad olema järjestatavad ja taastatavad.
-- Vahetulemusi peab saama taaskasutada ilma kogu loengut uuesti töötlemata.
-- Tasulise välise ASR- või LLM-teenuse kasutamine ei ole põhivariant.
-- Mudelid ja tööriistad peavad olema versioonitud ning võimalusel avatud litsentsiga.
-- Mahukaid audio-, video- ja mudelifaile ei hoita Git-repositooriumis ega andmebaasis.
-- Internetist uuesti hangitavad audio- ja videofailid on ajutised tööfailid: need paiknevad välise runtime’i `work/` kataloogis ning eemaldatakse vaikimisi pärast edukat või nurjunud töötlust. Säilitamine on lubatud ainult teadliku veaotsinguvalikuga.
-- Saladusi ja ligipääsutokeneid ei salvestata Git-i ega väljunditesse.
-- Ühe vea tõttu ei tohi kaduda varem edukalt loodud vaheartefaktid.
-- Kui rakendus vajab püsivat andmebaasi, tuleb kasutada samas pilves olemasolevat Oracle Always Free andmebaasi, mida kasutavad ka teised projektid, sealhulgas `err_video_to_text`.
-- Igal projektil peab Oracle’i andmebaasis olema oma kasutaja ehk schema.
-- Eri projektide schemade ristkasutus ei ole eelistatud. See on lubatud ainult põhjendatud vajaduse korral ning vajadus, ligipääsu ulatus ja vastutus peavad olema enne ristkasutuse rakendamist väga selgelt dokumenteeritud mõlema mõjutatud projekti dokumentatsioonis.
+- Kõik rakenduse käituskomponendid töötavad ühes või mitmes konteineris.
+- Pikad tööd käivitatakse asünkroonselt ning neil on kontrollitav olek, logi ja väljund.
+- Kõik projekti tekstifailid ja väljundid kasutavad UTF-8 kodeeringut.
+- CPU-rasked tööd peavad olema järjestatavad.
+- Valmis transkriptsiooni ei arvutata slaiditöötluse muutmise või kordamise tõttu uuesti.
+- Ajutised audio- ja videofailid asuvad ainult runtime'i `work/` kataloogis ning eemaldatakse pärast töö lõppu.
+- Mahukaid audio-, video- ja mudelifailide koopiaid ei salvestata Git-repositooriumi ega andmebaasi.
+- Esimene versioon kasutab failipõhist tööolekut ega vaja andmebaasi.
+- Kui püsiv andmebaas muutub vajalikuks, kasutatakse olemasolevat Oracle Always Free andmebaasi ja projektile eraldatud oma schemat. Teise projekti schema kasutamine vajab eelnevat põhjendust ning dokumenteerimist mõlemas projektis.
+- Võimalik veebiliides avaldatakse `fun-o.eu` domeeni all ühise nginx-serveri kaudu. TLS-i haldab olemasolev Let's Encrypti lahendus.
+- Saladusi, ligipääsutokeneid ja autentimisküpsiseid ei salvestata Git-i, logidesse ega väljunditesse.
 
-## 16. Esimese MVP ulatus
+## 13. MVP2 ulatusest välja jääv
 
-Esimene MVP on ühe loengu vertikaalne töövoog:
-
-```text
-Echo360 avalik kursuselink
-→ loengu valimine
-→ audio ja slaidide import
-→ eestikeelne ASR
-→ ainekava ja allikate sidumine
-→ konspekti mustand
-→ allikakontroll
-→ Markdown ja PDF
-```
-
-MVP võib olla esialgu CLI-põhine. Täielik veebiliides ei ole tehnilise tuuma valideerimise eeltingimus.
-
-## 17. MVP-st välja jääv
-
-- kõikide õppeainete üldine universaalne tugi;
+- transkripti automaatne keeleline ümberkirjutamine peale kokkulepitud täitesõnade eemaldamise;
+- loengukonspekti koostamine;
+- ainekava analüüsimine;
+- eksamifookuse tuvastamine;
+- kordamisküsimuste koostamine;
+- transkripti toimetava või konspekti koostava keelemudeli kasutamine;
+- välise keelemudeli API-ga ühendamine;
+- Echo360 automaattranskriptsiooni laadimine ja töötlemine eestikeelse loengu põhitekstina;
 - reaalajas transkriptsioon;
 - mitme loengu paralleeltöötlus;
-- automaatne ja eksimatu kõneleja isikutuvastus;
-- tasuline pilve-ASR või tasuline LLM API;
-- Echo360 automaattranskriptsiooni laadimine, säilitamine või töötlemine praeguses eestikeelsete loengute MVP-s;
-- DOCX eksport;
-- mahukas RAG või eraldi vektorandmebaas;
-- püsifailide viimine Oracle’i enda failisalvestusse, Oracle BLOB-idesse või AWS storage’isse;
-- avalik mitmekasutajasüsteem, autentimine ja kvoodid;
-- täiesti automaatne avaldamine ilma inimese ülevaatuseta.
+- DOCX-väljund;
+- Oracle'i, Oracle'i failisalvestuse või AWS-i kasutuselevõtt;
+- avalik mitmekasutajasüsteem, autentimine ja kvoodid.
 
-## 18. Esimese kontrolljuhtumi vastuvõtukriteeriumid
+## 14. Esimene kontrolljuhtum
 
-Loengu 3 katse loetakse sisuliselt edukaks, kui:
+Esimene kontrolljuhtum on ICM0032 loeng 3 „Business Continuity and Disaster Recovery Planning“.
 
-1. avalik `/public` link loob kasutatava Echo360 külalissessiooni;
-2. rakendus leiab valitud loengu audio ja slaidid;
-3. tekib eestikeelne ajatemplitega transkriptsioon;
-4. konspekt katab ainekava punktid 3.a–3.e või märgib tõendatult katmata punktid;
-5. konspekt on iseseisvalt loetav;
-6. oluline eksamijoonis või võtmeslaid on lisatud või selgelt viidatud;
-7. eksamifookuse väited on seotud konkreetse tõendiga;
-8. olulistel definitsioonidel ja õppejõu rõhutustel on loengu- ning slaidiviited;
-9. viitest saab rakenduses kiiresti avada vastava loengulõigu;
-10. konspekt sisaldab sisuga kooskõlalisi kordamisküsimusi;
-11. Markdown ja PDF sisaldavad sama põhisisu;
-12. ebakindlad väited on nähtavalt märgitud, mitte esitatud kindla faktina;
-13. tulemus on inimese hinnangul õppimiseks kasutatav ning võrreldav näidiskonspekti detailsuse ja struktuuriga.
+Kontrollitud andmed:
 
-## 19. Edu mõõtmine
+- Echo360 avalik kogumikulink: <https://echo360.org.uk/section/6f6fcb6b-cd42-4328-81db-eb3e30df9151/public>;
+- Echo lesson ID: `a18d8522-4637-4fcf-a62a-60e3b1f2e586`;
+- loengu kestus: 2 tundi ja 15 minutit;
+- TalTechNLP täistranskript: 15 064 sõna ja 447 segmenti;
+- tegelik transkriptsiooniaeg: 1 tund ja 40 minutit;
+- Echo ei paku selle loengu juures eraldi slide deck'i;
+- esitlusvideo sisaldab slaide;
+- kasutaja antud 88 slaidiga PPTX-faili täpne päritolu ja vastavus videole ei ole kinnitatud.
 
-Lisaks subjektiivsele kasutatavusele hinnatakse vähemalt:
+## 15. Vastuvõtukriteeriumid
 
-- ASR-i terminite täpsust käsitsi kontrollitud lõikudel;
-- ainekava punktide katvust;
-- kontrollitud faktiliste vigade arvu;
-- põhjendamata eksamiväidete arvu;
-- korrektsete slaidi- ja ajaviidete osakaalu;
-- inimese parandustöö mahtu;
-- etappide tööaega ja maksimaalset mälukasutust.
+MVP2 loetakse esimese kontrolljuhtumi põhjal edukaks, kui:
 
-Numbrilised läved lukustatakse enne kogu loengu võrdlustesti, mitte pärast tulemuse nägemist.
-
-## 20. Edasised etapid
-
-Pärast loengu 3 edukat vertikaalset katset:
-
-1. korrastatakse tööartefaktide ja allikate skeem;
-2. lisatakse ülevaatus- ja pleierivaade;
-3. testitakse mitme kõnelejaga loengut;
-4. töödeldakse teisi sama kursuse loenguid;
-5. hinnatakse üldistamist teistele õppeainetele;
-6. alles seejärel otsustatakse püsiva teenuse, autentimise ja laiema kursusehalduse vajadus.
+1. avalik Echo360 `/public` link loob kasutatava külalissessiooni;
+2. rakendus kuvab kogumiku loengud ja eristab salvestise olemasolu;
+3. kasutaja saab valida ühe kättesaadava salvestisega loengu;
+4. rakendus loob kogu loengust eestikeelse ajatemplitega transkripti;
+5. transkriptsioonitekst säilib peale kokkulepitud eraldiseisvate täitesõnade eemaldamise; segmentide ajapiire ei muudeta ja eemaldamata sõnade ajad säilivad;
+6. transkripti saab pisteliselt võrrelda salvestisega;
+7. rakendus kontrollib ja salvestab slaidide olemasolu või puudumise;
+8. videost leitud slaidid saavad järjekorranumbri ja ligikaudse ilmumisaja;
+9. slaidiviited lisatakse transkripti olemasolevaid segmente lõhkumata;
+10. vastavaks kinnitatud PDF-, PPT- või PPTX-slaidid võivad väljundis asendada videost võetud madalama kvaliteediga pildid;
+11. kontrollimata slaidifaili ei esitata videos kasutatud slaidide kinnitatud allikana;
+12. transkript ja slaidid on inimesele loetavas Markdown-väljundis;
+13. ajutine audio ja video eemaldatakse pärast edukat või nurjunud töötlust;
+14. töö olek, kasutatud mudel, tööriistad, kestus ja võimalikud vead on kontrollitavad;
+15. slaiditöötluse kordamine ei käivita valmis kõnetuvastust uuesti.

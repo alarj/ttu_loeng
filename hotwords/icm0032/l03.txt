@@ -1,0 +1,48 @@
+# Loeng 3: Business Continuity and Disaster Recovery Planning
+talitluspidevus
+avariitaaste
+situatsiooniplaneerimine
+Business Continuity
+Business Continuity Management
+Business Continuity Planning
+Disaster Recovery
+BCM
+BCP
+DRP
+BRP
+ERP
+BC/DR
+Business Impact Analysis
+BIA
+Maximum Tolerable Downtime
+MTD
+Recovery Time Objective
+RTO
+Recovery Point Objective
+RPO
+Mean Time Between Failure
+MTBF
+Mean Time To Repair
+MTTR
+Enterprise Risk Management
+ERM
+Risk Chain
+fortress mentality
+contingency planning
+business resumption
+business restoration
+business as usual
+hot site
+warm site
+cold site
+synchronous replication
+asynchronous replication
+PDCA
+Plan-Do-Check-Act
+ISO 22301
+ISO 22317
+NIST SP 800-34
+CIA triad
+SLA
+OLA
+Simple Event Correlator

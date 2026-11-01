@@ -15,6 +15,7 @@ Koostaja: AI (OpenAI Codex). Dokument põhineb 30.10.2026 samas ARM64 serveris k
 - [9. Kordamine ja artefaktid](#9-kordamine-ja-artefaktid)
 - [10. Järgmine nõutav kontroll](#10-järgmine-nõutav-kontroll)
 - [11. Kogu loengu ajastatud transkript](#11-kogu-loengu-ajastatud-transkript)
+- [12. Loengu 8.1 mudelivariandid](#12-loengu-81-mudelivariandid)
 
 ## 3. Eesmärk ja staatus
 
@@ -93,7 +94,7 @@ Järgmise arendusetapi tehniliseks põhikonfiguratsiooniks lukustatakse tingimus
 2. AI kvalitatiivne vaatlus näitas paremat eestikeelset loetavust ja valdkonnaterminite kuju;
 3. tegemist on TalTechNLP eestikeelsele kõnele kohandatud mudeliga.
 
-„Tingimuslikult“ tähendab, et konfiguratsiooni võib kasutada Etapp 3 tehnilise vertikaalse proovi loomiseks, kuid seda ei nimetata lõplikult kvaliteedilt kinnitatud põhimudeliks enne inimese kontrollitud referentsi ja WER/CER arvutamist.
+„Tingimuslikult“ tähendab, et konfiguratsiooni kasutatakse ajatemplitega transkripti loomiseks, kuid seda ei nimetata lõplikult kvaliteedilt kinnitatud põhimudeliks enne inimese kontrollitud referentsi ja WER/CER arvutamist.
 
 ## 9. Kordamine ja artefaktid
 
@@ -155,4 +156,40 @@ Kogu loengu esimene töö käivitati 31.10.2026 kell 08:47 UTC asünkroonse kont
 
 Töö tulemus sisaldab 447 segmenti kogu 8129,492-sekundilise salvestise kohta. Kogukestus oli 6033,696 sekundit, mudeli laadimine 21,947 sekundit, transkribeerimine 6008,997 sekundit ja reaalajakordaja 0,7392. Mudel oli `TalTechNLP/whisper-large-v3-turbo-et-verbatim` revisjoniga `1ae5a487d24116955803df4d9d01df56645eb44f`. `run.json` märgib `temporary_audio_removed: true` ning ajutist 113 081 307-baidist lähte-MP3 faili pärast töö lõppu failisüsteemis ei ole.
 
-Kasutaja antud fail [`initial_materials/L03_transkript_teine_AI.md`](initial_materials/L03_transkript_teine_AI.md) on selle enda kirjelduse järgi videoloengu automaatsubtiitritest tundmatu AI-ga korrastatud, ajamärkideta täistranskript. Fail ei nimeta automaatsubtiitrite süsteemi ega platvormi ning seost Echo360-ga ei ole tuvastatud. Toimetusmudel ei ole teada ja väide sisu täieliku säilimise kohta ei ole algsete subtiitrite või toimetuslogi puudumise tõttu kontrollitav. Faili kasutatakse tulevikus teemade, terminite, teksti normaliseerimise ja joondamise kandidaadina, mitte inimese kontrollitud referentsina. Kogu loengu TalTechNLP väljund jääb toimetamata ajastatud kihiks, mille kaudu saab väited tagasi salvestisega siduda.
+Kogu loengu TalTechNLP väljund on MVP2 muutmata ajastatud alusartefakt, mille kaudu saab teksti salvestisega võrrelda ning mille külge lisatakse slaidiviited.
+
+## 12. Loengu 8.1 mudelivariandid
+
+1.11.2026 loodi sama 876,414-sekundilise loengu põhjal kaks uut eraldi transkriptsiooni. Mõlemad kasutavad sama Faster-Whisperi konfiguratsiooni nagu senine variant: CPU `int8`, kolm CPU-lõime, üks worker, eesti keel, beam size `5`, sõnaajastused, `vad_filter=false` ja `condition_on_previous_text=false`.
+
+| Variant | Mudel ja revisjon | Segmente | Kogu töö kestus | Transkribeerimise kestus |
+|---|---|---:|---:|---:|
+| senine | `TalTechNLP/whisper-large-v3-turbo-et-verbatim` / `1ae5a487d24116955803df4d9d01df56645eb44f` | 58 | 644,050 s | 618,767 s |
+| verbatim-2604 | `TalTechNLP/whisper-large-v3-turbo-et-verbatim-2604` / `310c550922fc1d1bebf3fad41f9b33ede6652bdc` | 49 | 620,166 s | 590,448 s |
+| subs | `TalTechNLP/whisper-large-v3-turbo-et-subs` / `4a64175d3e2d902984f1f50488c101699162ccbb` | 109 | 546,624 s | 516,934 s |
+| verbatim-2604 + hotword'id + täitesõnade eemaldamine | `TalTechNLP/whisper-large-v3-turbo-et-verbatim-2604` / `310c550922fc1d1bebf3fad41f9b33ede6652bdc` | 51 | 697,475 s | 692,477 s |
+
+Kõik kolm tööd lõpetasid edukalt ja nende ajutine audio eemaldati. `verbatim-2604` ja `subs` transkript seoti sama varem kontrollitud viie slaidi ning samade videost saadud ilmumisaegadega; slaidituvastust uuesti ei käivitatud. Mudelite sisulist kvaliteeti, terminite õigsust ega teksti täielikkust ei ole selles etapis hinnatud. Need järeldused tehakse alles pärast kasutaja lugemiskontrolli.
+
+Lisaks valmis 1.11.2026 `verbatim-2604` uus töö 25 loengupõhise hotword'i ja kokkulepitud täitesõnade eemaldamisega. Sõnaajastuste põhjal eemaldati 38 eraldiseisvat `noh`, `aa…` või `ää…` vastet; lõppväljundi kontroll ei leidnud neist ühtegi allesjäänud vastet. Ajutine audio eemaldati ning transkript seoti sama viie varem tuvastatud slaidiga ilma slaidituvastust kordamata. Need on tehnilise töötluse mõõtetulemused, mitte transkriptsiooni sisulise kvaliteedi hinnang.
+
+Uued püsivad väljundid:
+
+```text
+/srv/ttu-loeng/outputs/jobs/l08-1/transcript/
+├── taltechnlp-turbo-et-verbatim-2604-int8/
+│   ├── run.json
+│   ├── transcript.json
+│   ├── transcript.md
+│   └── transcript_with_slides.md
+├── taltechnlp-turbo-et-subs-int8/
+    ├── run.json
+    ├── transcript.json
+    ├── transcript.md
+    └── transcript_with_slides.md
+└── taltechnlp-turbo-et-verbatim-2604-hotwords-int8/
+    ├── run.json
+    ├── transcript.json
+    ├── transcript.md
+    └── transcript_with_slides.md
+```

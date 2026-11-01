@@ -46,6 +46,8 @@ def build_parser() -> argparse.ArgumentParser:
     full.add_argument("--language", default="et")
     full.add_argument("--cpu-threads", type=int, default=3)
     full.add_argument("--beam-size", type=int, default=5)
+    full.add_argument("--hotwords-file", type=Path)
+    full.add_argument("--remove-fillers", action="store_true")
     return parser
 
 
@@ -76,6 +78,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(json.dumps({"status": "ok", "output": str(target_dir), **result["performance"]}, sort_keys=True))
             return 0
         if args.command == "transcribe-full":
+            hotwords, hotwords_metadata = _load_hotwords(args.hotwords_file)
             result = run_full_transcription_job(
                 public_url=args.public_url,
                 lesson_id=args.lesson_id,
@@ -90,6 +93,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 cpu_threads=max(1, args.cpu_threads),
                 beam_size=max(1, args.beam_size),
                 hf_cache=config.runtime_root / "models" / "huggingface" / "hub",
+                hotwords=hotwords,
+                hotwords_metadata=hotwords_metadata,
+                remove_fillers=args.remove_fillers,
             )
             print(json.dumps({"status": "ok", "output": str(output_dir), **result["performance"]}, sort_keys=True))
             return 0
@@ -114,6 +120,9 @@ def run_full_transcription_job(
     cpu_threads: int,
     beam_size: int,
     hf_cache: Path,
+    hotwords: list[str],
+    hotwords_metadata: dict[str, Any] | None,
+    remove_fillers: bool,
 ) -> dict[str, Any]:
     started_at = datetime.now(timezone.utc)
     started = time.perf_counter()
@@ -131,6 +140,8 @@ def run_full_transcription_job(
             "configuration_id": configuration_id,
             "model_id": model_id,
             "model_revision": revision,
+            "hotwords_sha256": hotwords_metadata["sha256"] if hotwords_metadata else None,
+            "filler_removal_enabled": remove_fillers,
             "temporary_audio_path": str(audio_path),
         },
     )
@@ -164,6 +175,9 @@ def run_full_transcription_job(
             beam_size=beam_size,
             hf_cache=hf_cache,
             download=download,
+            hotwords=hotwords,
+            hotwords_metadata=hotwords_metadata,
+            remove_fillers=remove_fillers,
         )
         shutil.rmtree(work_dir, ignore_errors=True)
         result["audio"]["temporary_audio_removed"] = not audio_path.exists()
@@ -182,6 +196,8 @@ def run_full_transcription_job(
                 "model_id": model_id,
                 "model_revision": revision,
                 "segment_count": len(result["segments"]),
+                "hotwords_sha256": hotwords_metadata["sha256"] if hotwords_metadata else None,
+                "removed_filler_word_count": result["configuration"]["filler_removal"]["removed_word_count"],
                 "temporary_audio_removed": not audio_path.exists(),
                 "performance": result["performance"],
             },
@@ -224,6 +240,9 @@ def run_full_transcription(
     beam_size: int,
     hf_cache: Path,
     download: dict[str, Any],
+    hotwords: list[str],
+    hotwords_metadata: dict[str, Any] | None,
+    remove_fillers: bool,
 ) -> dict[str, Any]:
     from faster_whisper import WhisperModel
 
@@ -260,6 +279,7 @@ def run_full_transcription(
         word_timestamps=True,
         vad_filter=False,
         condition_on_previous_text=False,
+        hotwords=", ".join(hotwords) if hotwords else None,
     )
     segments: list[dict[str, Any]] = []
     for index, segment in enumerate(generated_segments):
@@ -283,6 +303,9 @@ def run_full_transcription(
                 "words": words,
             }
         )
+    removed_filler_word_count = 0
+    if remove_fillers:
+        segments, removed_filler_word_count = _remove_filler_words(segments)
     transcription_seconds = time.perf_counter() - transcription_started
     audio_duration_seconds = float(info.duration)
     usage = resource.getrusage(resource.RUSAGE_SELF)
@@ -323,6 +346,16 @@ def run_full_transcription(
             "word_timestamps": True,
             "vad_filter": False,
             "condition_on_previous_text": False,
+            "hotwords": (
+                {**hotwords_metadata, "entries": hotwords}
+                if hotwords_metadata is not None
+                else None
+            ),
+            "filler_removal": {
+                "enabled": remove_fillers,
+                "rules": ["noh", "a{2,}", "ä{2,}"],
+                "removed_word_count": removed_filler_word_count,
+            },
         },
         "detected_language": info.language,
         "language_probability": round(info.language_probability, 5),
@@ -339,6 +372,76 @@ def run_full_transcription(
         "transcript": " ".join(item["text"] for item in segments).strip(),
         "segments": segments,
     }
+
+
+def _load_hotwords(path: Path | None) -> tuple[list[str], dict[str, Any] | None]:
+    if path is None:
+        return [], None
+    source = path.expanduser().resolve()
+    if not source.is_file():
+        raise ValueError(f"Hotwords file does not exist: {source}")
+    entries: list[str] = []
+    seen: set[str] = set()
+    for raw_line in source.read_text(encoding="utf-8").splitlines():
+        entry = raw_line.strip()
+        if not entry or entry.startswith("#"):
+            continue
+        key = entry.casefold()
+        if key not in seen:
+            entries.append(entry)
+            seen.add(key)
+    if not entries:
+        raise ValueError("Hotwords file contains no entries")
+    return entries, {
+        "filename": source.name,
+        "sha256": _file_sha256(source),
+        "entry_count": len(entries),
+    }
+
+
+def _remove_filler_words(
+    segments: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], int]:
+    filtered_segments: list[dict[str, Any]] = []
+    removed_count = 0
+    for segment in segments:
+        words = segment.get("words")
+        if not isinstance(words, list) or not words:
+            filtered_segments.append(segment)
+            continue
+        kept_words: list[dict[str, Any]] = []
+        first_kept_index: int | None = None
+        for index, word in enumerate(words):
+            if _is_filler_word(str(word.get("text", ""))):
+                removed_count += 1
+                continue
+            if first_kept_index is None:
+                first_kept_index = index
+            kept_words.append(word)
+        if not kept_words:
+            continue
+        text = "".join(str(word["text"]) for word in kept_words).strip()
+        if first_kept_index and text:
+            text = _uppercase_first_letter(text)
+        filtered_segments.append({**segment, "text": text, "words": kept_words})
+    return filtered_segments, removed_count
+
+
+def _is_filler_word(value: str) -> bool:
+    normalized = re.sub(
+        r"^[^\wõäöüšž]+|[^\wõäöüšž]+$",
+        "",
+        value.casefold(),
+        flags=re.UNICODE,
+    )
+    return normalized == "noh" or bool(re.fullmatch(r"a{2,}|ä{2,}", normalized))
+
+
+def _uppercase_first_letter(value: str) -> str:
+    for index, character in enumerate(value):
+        if character.isalpha():
+            return value[:index] + character.upper() + value[index + 1 :]
+    return value
 
 
 def run_benchmark(
@@ -587,13 +690,21 @@ def _render_full_transcript(result: dict[str, Any]) -> str:
     lesson = result["lesson"]
     config = result["configuration"]
     performance = result["performance"]
+    filler_config = config.get("filler_removal") or {}
+    origin = (
+        "Koostaja: AI (OpenAI Codex), automaatselt TalTechNLP ASR-i segmendiväljundi põhjal. "
+        "Kokkulepitud eraldiseisvad täitesõnad on sõnaajastuste põhjal eemaldatud; muud teksti "
+        "ei ole keeleliselt toimetatud ja inimene ei ole transkripti kinnitanud."
+        if filler_config.get("enabled")
+        else "Koostaja: AI (OpenAI Codex), automaatselt TalTechNLP ASR-i segmendiväljundi põhjal. "
+        "Transkript on toimetamata ja inimese poolt kinnitamata; ajamärgid pärinevad ASR-ist."
+    )
     lines = [
         f"# {lesson['title']} — ajastatud ASR-transkript",
         "",
         "## 1. Dokumendi päritolu",
         "",
-        "Koostaja: AI (OpenAI Codex), automaatselt TalTechNLP ASR-i segmendiväljundi põhjal. "
-        "Transkript on toimetamata ja inimese poolt kinnitamata; ajamärgid pärinevad ASR-ist.",
+        origin,
         "",
         "## 2. Sisukord",
         "",
@@ -610,6 +721,8 @@ def _render_full_transcript(result: dict[str, Any]) -> str:
         f"- Segmente: `{result['segment_count']}`",
         f"- Transkriptsiooniaeg: `{performance['transcription_seconds']} s`",
         f"- Reaalaja tegur: `{performance['real_time_factor']}`",
+        f"- Hotword'e: `{(config.get('hotwords') or {}).get('entry_count', 0)}`",
+        f"- Eemaldatud täitesõnu: `{filler_config.get('removed_word_count', 0)}`",
         "",
         "## 4. Ajastatud transkript",
         "",

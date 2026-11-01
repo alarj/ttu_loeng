@@ -1,0 +1,26 @@
+# Loeng 8.1: AI in COBIT 2019
+COBIT
+COBIT 2019
+AI governance
+AI-enabled
+AI-assisted
+agentic systems
+autonomous processes
+autonomous agents
+EDM
+APO
+BAI
+DSS
+MEA
+Foundation Models
+LLM
+vector databases
+AI platforms
+prompt engineers
+AI auditors
+AI Ethics Committees
+Responsible AI
+AI literacy
+training data
+inference pipelines
+human oversight

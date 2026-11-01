@@ -43,7 +43,7 @@ Koostaja: AI (OpenAI Codex), kasutaja juhiste järgi. Käesoleva dokumendi esime
 - Töötavat koodi ei tohi igaks juhuks muuta ega ennetavalt parandada. Kui mingi osa töötab ja ei ole uuritava vea tõendatud juurpõhjus, siis seda ei muudeta.
 - Ära muuda kõrvalisi faile ega paranda mitteseotud probleeme.
 - Kõrge mõjuga otsuste puhul eelista juurpõhjuse parandamist, mitte lokaalseid ümberkäike.
-- Pikad ASR-i, diariseerimise, mudelite laadimise ja muud rasked protsessid tuleb käivitada asünkroonselt nii, et vestlusaken jääb kasutajale vabaks. Protsessil peab olema hiljem kontrollitav olek, logi ja väljund; pelgalt terminaliseansi elus püsimisele ei tohi tugineda.
+- Pikad ASR-i, video- ja slaiditöötluse ning muud rasked protsessid tuleb käivitada asünkroonselt nii, et vestlusaken jääb kasutajale vabaks. Protsessil peab olema hiljem kontrollitav olek, logi ja väljund; pelgalt terminaliseansi elus püsimisele ei tohi tugineda.
 
 ### Dokumentatsiooni ajakohastamine
 
@@ -97,7 +97,7 @@ Koostaja: AI (OpenAI Codex), kasutaja juhiste järgi. Käesoleva dokumendi esime
 
 - Hoia API, andmemudeli, tööartefaktide ja ärireeglite käitumine eri klientide jaoks järjekindel.
 - Väldi lahendusi, mis suurendavad põhjendamatult CPU-, mälu-, ketta-, võrgu- või andmebaasikoormust.
-- Serveri piiratud ressursi tõttu tuleb ASR, diariseerimine ja lokaalse keelemudeli töö vaikimisi järjestada.
+- Serveri jagatud CPU-ressursi tõttu tuleb ASR ning video- ja slaiditöötluse rasked tööd vaikimisi järjestada.
 - API teenused peavad tagastama konkreetse kasutusjuhtumi jaoks vajaliku minimaalse andmehulga.
 - Kui lisatakse püsiv andmebaas, on autoriteetne aeg UTC ning kasutajaliides kuvab aja kasutaja lokaalses ajavööndis.
 - Kasutajaliidese tekstid peavad olema tõlgetest, mitte kõvakodeeritud.
@@ -114,18 +114,13 @@ Koostaja: AI (OpenAI Codex), kasutaja juhiste järgi. Käesoleva dokumendi esime
 - [`docs/agents.md`](agents.md) — projekti siduvad tööreeglid.
 - [`docs/lahteylesanne.md`](lahteylesanne.md) — rakenduse eesmärk, ulatus ja vastuvõtukriteeriumid.
 - [`docs/tehniline_spek.md`](tehniline_spek.md) — tehniline arhitektuur, andmemudel, töövoog ja etapistus.
+- [`docs/slaiditootlus.md`](slaiditootlus.md) — slaidide olemasolu kontrolli, tuvastamise, sobitamise ja transkriptiga sidumise detailne lahendus.
 - [`docs/asr_benchmark.md`](asr_benchmark.md) — Etapp 2 kontrollkomplekt, mudelivõrdlus, mõõtetulemused ja otsus.
-- [`docs/etapp3_vertikaalne_proov.md`](etapp3_vertikaalne_proov.md) — Etapp 3 ühe teema tõendipaketi, kohaliku LLM-i katse, kontrolli ja katvuslünkade raport.
-- [`docs/transkripti_toimetamise_proov.md`](transkripti_toimetamise_proov.md) — lihtsa vabatekstipromptiga transkripti toimetamise katse ja inimese ülevaatus.
 
 ### Lähte- ja võrdlusmaterjalid
 
-- [`docs/initial_materials/AINEKAVA 1.237978_Laiendatud ainekava ICM0032 2026-10-09 v9.pdf`](initial_materials/AINEKAVA%201.237978_Laiendatud%20ainekava%20ICM0032%202026-10-09%20v9.pdf) — ICM0032 laiendatud ainekava.
-- [`docs/initial_materials/L03_konspekt.docx.pdf`](initial_materials/L03_konspekt.docx.pdf) — loengu 3 näidiskonspekt.
 - [`docs/initial_materials/L03_slaidikandidaat.pptx`](initial_materials/L03_slaidikandidaat.pptx) — kasutaja antud muutmata PowerPointi fail, mis pealkirja, kirjelduse ja põgusa sisukontrolli järgi on tõenäoliselt loengu 3 slaidipakk; faili täpne päritolu ja vastavus salvestises kasutatud slaididele ei ole teada.
 - [`docs/initial_materials/L03_slaidikandidaat.origin.md`](initial_materials/L03_slaidikandidaat.origin.md) — slaidikandidaadi teadaolev päritolu, struktuur, kontrollsumma ja kasutuspiir.
-- [`docs/initial_materials/L03_transkript_teine_AI.md`](initial_materials/L03_transkript_teine_AI.md) — kasutaja antud, faili kirjelduse järgi videoloengu automaatsubtiitritest tundmatu AI-ga korrastatud loengu 3 täistranskript; subtiitrite süsteem ja platvorm ning toimetusmudel on teadmata, seost Echo360-ga ei ole tuvastatud ja materjal ei ole kinnitatud referents.
-- [`docs/initial_materials/L03_transkript_teine_AI.origin.md`](initial_materials/L03_transkript_teine_AI.origin.md) — kasutaja antud transkripti päritolu, kontrollsumma ja kasutuspiir.
 - Echo360 avalik kursuselink, kursuse metaandmed, loengusalvestised ja slaidid.
 - `err_video_to_text` dokumentatsioon ja kood ainult nende komponentide analüüsimisel, mida käesolevas projektis soovitakse taaskasutada.
 - `/home/ubuntu/fun_o/nginx/default.conf` ja `/home/ubuntu/fun_o/docker-compose.yml` ühise nginx-veebiserveri või `funo_net` võrguga integratsiooni kavandamisel ja muutmisel.
@@ -137,20 +132,15 @@ Koostaja: AI (OpenAI Codex), kasutaja juhiste järgi. Käesoleva dokumendi esime
 - [`src/lecture_notes/manifests.py`](../src/lecture_notes/manifests.py) — loengu-, meedia- ja slaidimanifestid ning atomaarne kirjutamine.
 - [`src/lecture_notes/cli.py`](../src/lecture_notes/cli.py) — konteineris kasutatava CLI käsud.
 - [`src/lecture_notes/asr_benchmark.py`](../src/lecture_notes/asr_benchmark.py) — ASR-i lukustatud kontrollkomplekti töötlus, kogu loengu ajastatud transkriptsioon, kvaliteedimõõdikud ja ressursimõõtmine.
+- [`src/lecture_notes/slides.py`](../src/lecture_notes/slides.py) — videokaadrite, OCR-i ja PDF-i praegune slaiditöötluse alus.
 - [`compose.yaml`](../compose.yaml) ja [`Dockerfile`](../Dockerfile) — importeri konteinerpakendus.
 - [`Dockerfile.asr`](../Dockerfile.asr) — Faster-Whisperi sõltuvustega eraldatud ASR-workeri konteinerpakendus.
-- [`Dockerfile.pipeline`](../Dockerfile.pipeline) — PDF-i, video, OCR-i ja Etapp 3 töötluse eraldatud konteinerpakendus.
-- [`src/lecture_notes/stage3.py`](../src/lecture_notes/stage3.py) — Etapp 3 ainekava, allikate joondamise, tõendite ja peatüki töövoog.
-- [`src/lecture_notes/simple_transcript_editor.py`](../src/lecture_notes/simple_transcript_editor.py) — järjestikuse transkriptsioonilõigu lihtsa vabatekstipromptiga toimetamise käsk.
-- [`src/lecture_notes/full_notes_generator.py`](../src/lecture_notes/full_notes_generator.py) — tervikliku EstLLM-i konspektikatse sisendpaketi koostamine, asünkroonse jooksu olek ja väljundi salvestamine.
-- [`prompts/konspekt.md`](../prompts/konspekt.md) — lokaalsele EstLLM-ile antav tervikliku ülikoolikonspekti koostamise juhis.
+- [`Dockerfile.slides`](../Dockerfile.slides) — FFmpegi, Tesseracti ja PyMuPDF-iga slaiditöötluse konteinerpakendus.
 - [`benchmarks/datasets/lecture3_v1.json`](../benchmarks/datasets/lecture3_v1.json) — loengu 3 lukustatud ASR-kontrollkomplekti masinloetav kirjeldus.
-- [`benchmarks/evidence/l03_3e_v1.json`](../benchmarks/evidence/l03_3e_v1.json) — Etapp 3 esimese vertikaalse proovi auditeeritav tõendi- ja slaidivalik ning teadaolev katvuslünk.
-- [`benchmarks/editing/l03_editing_v1.json`](../benchmarks/editing/l03_editing_v1.json) — loengu alguse, keskosa ja lõpu lukustatud toimetamiskatse valik.
+- [`hotwords/icm0032/l03.txt`](../hotwords/icm0032/l03.txt) ja [`hotwords/icm0032/l08-1.txt`](../hotwords/icm0032/l08-1.txt) — loengupõhised erialaterminid, mis edastatakse Faster-Whisperile hotword'idena.
 - [`.env.example`](../.env.example) — runtime’i, konteineri kasutaja ja kodukataloogi seadistuse mall.
 - [`tests/test_echo360.py`](../tests/test_echo360.py) — olekuloogika võrguvabad kontrollid.
-- [`tests/test_asr_benchmark.py`](../tests/test_asr_benchmark.py) — ASR-i kvaliteedimõõdikute võrguvabad kontrollid.
-- [`tests/test_simple_transcript_editor.py`](../tests/test_simple_transcript_editor.py) — lihtsa prompti ja järjestikuse tekstilõigu koostamise võrguvabad kontrollid.
+- [`tests/test_asr_benchmark.py`](../tests/test_asr_benchmark.py) — ASR-i kvaliteedimõõdikute ja videoallika valiku võrguvabad kontrollid.
 
 Registrit tuleb täiendada kohe, kui projektile lisandub README, andmeskeem, API leping, konteinerite kirjeldus, hindamisandmete register või muu asjakohane allikas. Registrisse kuulumine ei anna allikale teiste ees ülimuslikkust.
 
@@ -161,8 +151,8 @@ Registrit tuleb täiendada kohe, kui projektile lisandub README, andmeskeem, API
 - Kui muudad arhitektuuri, andmemudelit, tööde järjekorda, konteinerite vastutusi või ressursikasutust, loe `docs/tehniline_spek.md`, asjakohane konfiguratsioon ja kogu mõjutatud töötlusahel.
 - Kui muudad avalikku hostinime, TLS-i, pöördproksit, veebiliidese serveerimist või ühise Docker-võrgu kasutust, loe enne `/home/ubuntu/fun_o/nginx/default.conf`, `/home/ubuntu/fun_o/docker-compose.yml` ja mõlema mõjutatud projekti juurutusdokumentatsioon.
 - Kui muudad Echo360 resolverit või meediaallikate salvestamist, kontrolli toimivat avaliku sessiooni loomise voogu, tegelikke võrgupäringuid ja olemasolevaid resolveri artefakte.
-- Kui muudad ASR-i, diariseerimist või tekstisegmentide sidumist, loe vastavad mudeli- ja hindamisdokumendid, olemasolev teostus ning kontrollandmed. `err_video_to_text` taaskasutuse korral loe enne selle projekti asjakohased allikad.
-- Kui muudad konspekti sünteesi, loe ainekava, näidiskonspekt, allikate andmemudel ja vähemalt üks tegelik transkriptsiooni/slaidide komplekt.
+- Kui muudad ASR-i või tekstisegmentide ajastust, loe vastavad mudeli- ja hindamisdokumendid, olemasolev teostus ning kontrollandmed. `err_video_to_text` taaskasutuse korral loe enne selle projekti asjakohased allikad.
+- Kui muudad slaidide olemasolu kontrolli, tuvastamist, sobitamist või transkriptiga sidumist, loe `docs/slaiditootlus.md`, olemasolev teostus, tegelik meediamanifest, kontrollvideo andmed ja seotud testid.
 - Kui kasutad protsessiandmeid kvantitatiivseks analüüsiks või mudeli õpetamiseks, peab enne olema dokumenteeritud andmete kasutusluba ja hindamiskomplekti ulatus.
 
 ## 11. Väljundi ootused
