@@ -7,10 +7,8 @@ from tempfile import TemporaryDirectory
 from lecture_notes.asr_benchmark import (
     _edit_distance,
     _format_hms,
-    _is_filler_word,
     _load_hotwords,
     _quality_metrics,
-    _remove_filler_words,
     build_parser,
 )
 from lecture_notes.slides import (
@@ -64,12 +62,10 @@ class AsrMetricTests(unittest.TestCase):
                 "config-id",
                 "--hotwords-file",
                 "/app/hotwords/icm0032/l08-1.txt",
-                "--remove-fillers",
             ]
         )
         self.assertEqual(args.command, "transcribe-full")
         self.assertEqual(args.hotwords_file, Path("/app/hotwords/icm0032/l08-1.txt"))
-        self.assertTrue(args.remove_fillers)
 
     def test_hotwords_file_ignores_comments_blanks_and_duplicates(self) -> None:
         with TemporaryDirectory() as directory:
@@ -79,43 +75,6 @@ class AsrMetricTests(unittest.TestCase):
         self.assertEqual(entries, ["COBIT", "LLM"])
         self.assertIsNotNone(metadata)
         self.assertEqual(metadata["entry_count"], 2)
-
-    def test_filler_recognition_is_limited_to_agreed_standalone_words(self) -> None:
-        for value in ("noh", " Noh,", "aa", "aaa...", "ää", " ÄÄÄ "):
-            self.assertTrue(_is_filler_word(value))
-        for value in ("a", "nohu", "raamat", "äär"):
-            self.assertFalse(_is_filler_word(value))
-
-    def test_filler_removal_rebuilds_one_final_segment_text(self) -> None:
-        segments = [
-            {
-                "id": "seg_000000",
-                "start_seconds": 0.0,
-                "end_seconds": 3.0,
-                "text": "Noh, see aaa töötab ää...",
-                "words": [
-                    {"text": " Noh,"},
-                    {"text": " see"},
-                    {"text": " aaa"},
-                    {"text": " töötab"},
-                    {"text": " ää..."},
-                ],
-            },
-            {
-                "id": "seg_000001",
-                "start_seconds": 3.0,
-                "end_seconds": 4.0,
-                "text": "Noh.",
-                "words": [{"text": " Noh."}],
-            },
-        ]
-        filtered, removed_count = _remove_filler_words(segments)
-        self.assertEqual(removed_count, 4)
-        self.assertEqual(len(filtered), 1)
-        self.assertEqual(filtered[0]["text"], "See töötab")
-        self.assertEqual(filtered[0]["start_seconds"], 0.0)
-        self.assertEqual(filtered[0]["end_seconds"], 3.0)
-
 
 class SlideSourceTests(unittest.TestCase):
     def test_select_video_source_prefers_smallest_resolution(self) -> None:

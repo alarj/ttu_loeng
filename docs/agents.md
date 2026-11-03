@@ -137,7 +137,7 @@ Koostaja: AI (OpenAI Codex), kasutaja juhiste järgi. Käesoleva dokumendi esime
 - [`Dockerfile.asr`](../Dockerfile.asr) — Faster-Whisperi sõltuvustega eraldatud ASR-workeri konteinerpakendus.
 - [`Dockerfile.slides`](../Dockerfile.slides) — FFmpegi, Tesseracti ja PyMuPDF-iga slaiditöötluse konteinerpakendus.
 - [`benchmarks/datasets/lecture3_v1.json`](../benchmarks/datasets/lecture3_v1.json) — loengu 3 lukustatud ASR-kontrollkomplekti masinloetav kirjeldus.
-- [`hotwords/icm0032/l03.txt`](../hotwords/icm0032/l03.txt) ja [`hotwords/icm0032/l08-1.txt`](../hotwords/icm0032/l08-1.txt) — loengupõhised erialaterminid, mis edastatakse Faster-Whisperile hotword'idena.
+- [`hotwords/icm0032/l03.txt`](../hotwords/icm0032/l03.txt) ja [`hotwords/icm0032/l08-1.txt`](../hotwords/icm0032/l08-1.txt) — varasemates katsetes kasutatud loengupõhised erialaterminid; [`hotwords/icm0032/l08-1-cobit.txt`](../hotwords/icm0032/l08-1-cobit.txt) — loengu 8.1 kontrollkatse üksiku `COBIT` hotword'iga.
 - [`.env.example`](../.env.example) — runtime’i, konteineri kasutaja ja kodukataloogi seadistuse mall.
 - [`tests/test_echo360.py`](../tests/test_echo360.py) — olekuloogika võrguvabad kontrollid.
 - [`tests/test_asr_benchmark.py`](../tests/test_asr_benchmark.py) — ASR-i kvaliteedimõõdikute ja videoallika valiku võrguvabad kontrollid.

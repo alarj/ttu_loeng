@@ -80,7 +80,7 @@ MVP2 tööharus on teostatud pildimuutuste põhine slaidikandidaatide leidmine, 
 
 ## 5. Arhitektuuri põhimõtted
 
-1. ASR-i lõpptranskript on alusartefakt: mudelit suunatakse salvestatud hotword-loendiga ning sellest eemaldatakse ainult kokkulepitud eraldiseisvad täitesõnad. Eraldi toortranskripti ei looda.
+1. ASR-i lõpptranskript on alusartefakt: katsekonfiguratsioonis võib mudelit suunata salvestatud hotword-loendiga, kuid mudeli loodud teksti järelprotsessis ei muudeta.
 2. Slaiditöötlus on ASR-ist eraldi korratav etapp.
 3. Slaidide ajastus tuleb videost.
 4. Kasutaja slaidifaili kasutatakse ainult pärast videoga vastavuse kontrollimist.
@@ -129,7 +129,6 @@ Vastutus:
 - TalTechNLP mudeli laadimine;
 - loengupõhise hotword-loendi laadimine ja Faster-Whisperile edastamine;
 - kogu loengu transkribeerimine;
-- kokkulepitud eraldiseisvate täitesõnade eemaldamine sõnaajastuste põhjal;
 - segmendi- ja sõnaajastuste salvestamine;
 - Markdown-vaate loomine;
 - ressursi- ja tööoleku salvestamine;
@@ -172,7 +171,7 @@ Kasutaja valib loengu. Rakendus kontrollib tegelikke meediakirjeid ning eristab 
 
 ### 7.3. `TRANSCRIBING`
 
-ASR-worker hangib audio ajutisse `work/` kataloogi, kirjutab enne mudelitööd olekufaili, edastab mudelile valitud loengu hotword'id ja loob täieliku ajatemplitega transkripti. Sõnaajastuste põhjal eemaldatakse täpselt `noh`, vähemalt kahest `a`-st koosnevad häälitsused ja vähemalt kahest `ä`-st koosnevad häälitsused. Segmendi ajapiire ei muudeta. Audio eemaldatakse `finally`-koristuses nii edu kui vea korral.
+ASR-worker hangib audio ajutisse `work/` kataloogi, kirjutab enne mudelitööd olekufaili, edastab katsekonfiguratsioonis mudelile valitud loengu hotword'id ja loob täieliku ajatemplitega transkripti. Mudeli loodud teksti ega segmendi ajapiire järelprotsessis ei muudeta. Audio eemaldatakse `finally`-koristuses nii edu kui vea korral.
 
 ### 7.4. `CHECKING_SLIDES`
 
@@ -198,8 +197,9 @@ Slaidiviited lisatakse olemasolevate transkriptsioonisegmentide vahele. Algne te
 
 Põhikonfiguratsioon:
 
-- mudel `TalTechNLP/whisper-large-v3-turbo-et-verbatim`;
-- lukustatud revisjon `1ae5a487d24116955803df4d9d01df56645eb44f`;
+- mudel `TalTechNLP/whisper-large-v3-turbo-et-verbatim-2604`;
+- lukustatud revisjon `310c550922fc1d1bebf3fad41f9b33ede6652bdc`;
+- mudelirepo `ct2` alamkataloog;
 - Faster-Whisper `1.2.1`;
 - CTranslate2 `4.8.4`;
 - PyAV `18.0.0`;
@@ -211,11 +211,13 @@ Põhikonfiguratsioon:
 
 Konfiguratsiooni valiku mõõtmised ja piirangud on failis [`asr_benchmark.md`](asr_benchmark.md). Mudeli väljundit ei nimetata inimese kontrollitud referentstranskriptiks.
 
-Loengu 8.1 põhjal on eraldi kandidaatväljunditena käivitatud ka `TalTechNLP/whisper-large-v3-turbo-et-verbatim-2604` ja `TalTechNLP/whisper-large-v3-turbo-et-subs`. Mõlemad tehnilised tööd lõpetasid edukalt, kuid põhikonfiguratsiooni ei muudeta enne kasutaja sisulist lugemiskontrolli. Mudelite revisjonid, kestused ja väljundite asukohad on dokumenteeritud failis [`asr_benchmark.md`](asr_benchmark.md).
+Loengu 8.1 variantide kasutaja sisulise lugemiskontrolli põhjal annab hotword'ideta `verbatim-2604` katsetatud lokaalsetest mudelitest parima tulemuse. `subs` variant oli liiga lakooniline ning hotword'idega variandid ei parandanud termineid usaldusväärselt. Mudelite revisjonid, kestused, väljundite asukohad ja Gemini sisuvõrdlus on dokumenteeritud failis [`asr_benchmark.md`](asr_benchmark.md).
 
-Hotword'id loetakse UTF-8 tekstifailist, üks termin või fraas real. Tühjad read, kommentaarid ja tõstutundetult korduvad kirjed jäetakse välja. Faster-Whisper saab ülejäänud kirjed ühe `hotwords` tekstina. Väljund salvestab loendi failinime, kontrollsumma, kirjete arvu ja kirjed. ICM0032 esialgsed loengupõhised loendid asuvad kataloogis [`hotwords/icm0032`](../hotwords/icm0032).
+Hotword'ide tugi säilib kontrollkatsete kordamiseks, kuid põhikonfiguratsioon hotword'e ei kasuta. ICM0032 katsefailid asuvad kataloogis [`hotwords/icm0032`](../hotwords/icm0032). 25 terminiga katse halvendas teksti ning ühe `COBIT` hotword'iga katse ei tuvastanud `COBIT`-it õigesti kordagi.
 
-Täitesõnade eemaldamine toimub sama lõpptranskripti loomisel, mitte eraldi toimetamisetapina. Eemaldamine võrdleb tervet sõna pärast ümbritsevate kirjavahemärkide eemaldamist; seetõttu ei eemaldata näiteks sõnu `nohu` ega `äär`. Kui täitesõna oli segmendi alguses, muudetakse järgmise allesjäänud sõna algustäht suureks. Kui segment sisaldas ainult eemaldatavaid täitesõnu, jäetakse tühi segment väljundist välja.
+Mehaanilise täitesõnade järelpuhastuse katse eemaldas küll üksikuid sõnu, kuid ei toimetanud ümbritsevat lauseehitust ega kirjavahemärgistust. Kasutaja võrdluses jäi tekst kohati poolikuks ja muutus halvemini arusaadavaks. Seetõttu on see lahendus tagasi lükatud ja aktiivsest töötlusahelast eemaldatud; katse väljund säilib võrdlusmaterjalina.
+
+`Gemini 3.5 Flash-Lite` abil samast loengust loodud transkript säilitas erialatermineid ja loengu tähendust lokaalsest põhikonfiguratsioonist paremini. Kasutatud juhis ja teenuse täpne konfiguratsioon pole teada ning mitmetunniste loengute järjestikust töötlemist pole projektis kontrollitud. Tasuta kasutuse mahu võimalik piirang on seetõttu avatud praktiline risk, mitte tuvastatud süsteemipiirang.
 
 ## 9. Slaiditöötlus
 

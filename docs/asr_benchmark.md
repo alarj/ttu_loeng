@@ -2,7 +2,7 @@
 
 ## 1. Dokumendi päritolu
 
-Koostaja: AI (OpenAI Codex). Dokument põhineb 30.10.2026 samas ARM64 serveris käivitatud ASR-mõõtmistel, lukustatud kontrollkomplektil ning automaatselt loodud JSON- ja Markdown-artefaktidel. Tekstinäidete kvalitatiivne vaatlus on AI hinnang, mitte inimese kontrollitud referentstranskriptsioon.
+Koostaja: AI (OpenAI Codex). Dokument põhineb samas ARM64 serveris käivitatud ASR-mõõtmistel, lukustatud kontrollkomplektil, automaatselt loodud artefaktidel ning kasutaja 1.–2.11.2026 tehtud kõrvutaval lugemiskontrollil. Tekstinäidete võrdlus ei ole inimese koostatud sõna-sõnaline referentstranskriptsioon.
 
 ## 2. Sisukord
 
@@ -16,6 +16,8 @@ Koostaja: AI (OpenAI Codex). Dokument põhineb 30.10.2026 samas ARM64 serveris k
 - [10. Järgmine nõutav kontroll](#10-järgmine-nõutav-kontroll)
 - [11. Kogu loengu ajastatud transkript](#11-kogu-loengu-ajastatud-transkript)
 - [12. Loengu 8.1 mudelivariandid](#12-loengu-81-mudelivariandid)
+- [13. Loengu 8.1 Gemini sisuvõrdlus](#13-loengu-81-gemini-sisuvõrdlus)
+- [14. Lõplik lokaalse mudeli valik](#14-lõplik-lokaalse-mudeli-valik)
 
 ## 3. Eesmärk ja staatus
 
@@ -88,13 +90,13 @@ See vaatlus ei ole WER ega CER ja ei tõenda, et TalTechNLP iga sõna on õige. 
 
 ## 8. Otsus
 
-Järgmise arendusetapi tehniliseks põhikonfiguratsiooniks lukustatakse tingimuslikult `taltechnlp-turbo-et-int8`, sest:
+Esialgse benchmark-etapi tehniliseks põhikonfiguratsiooniks lukustati tingimuslikult `taltechnlp-turbo-et-int8`, sest:
 
 1. see oli samade parameetritega kiirem;
 2. AI kvalitatiivne vaatlus näitas paremat eestikeelset loetavust ja valdkonnaterminite kuju;
 3. tegemist on TalTechNLP eestikeelsele kõnele kohandatud mudeliga.
 
-„Tingimuslikult“ tähendab, et konfiguratsiooni kasutatakse ajatemplitega transkripti loomiseks, kuid seda ei nimetata lõplikult kvaliteedilt kinnitatud põhimudeliks enne inimese kontrollitud referentsi ja WER/CER arvutamist.
+„Tingimuslikult“ tähendas, et konfiguratsiooni kasutati ajatemplitega transkripti loomiseks, kuid seda ei nimetatud lõplikult kvaliteedilt kinnitatud põhimudeliks enne edasisi võrdlusi. Loengu 8.1 hilisemate katsete põhjal tehtud ajakohane lokaalse mudeli valik on jaotises 14.
 
 ## 9. Kordamine ja artefaktid
 
@@ -168,10 +170,13 @@ Kogu loengu TalTechNLP väljund on MVP2 muutmata ajastatud alusartefakt, mille k
 | verbatim-2604 | `TalTechNLP/whisper-large-v3-turbo-et-verbatim-2604` / `310c550922fc1d1bebf3fad41f9b33ede6652bdc` | 49 | 620,166 s | 590,448 s |
 | subs | `TalTechNLP/whisper-large-v3-turbo-et-subs` / `4a64175d3e2d902984f1f50488c101699162ccbb` | 109 | 546,624 s | 516,934 s |
 | verbatim-2604 + hotword'id + täitesõnade eemaldamine | `TalTechNLP/whisper-large-v3-turbo-et-verbatim-2604` / `310c550922fc1d1bebf3fad41f9b33ede6652bdc` | 51 | 697,475 s | 692,477 s |
+| verbatim-2604 + üks `COBIT` hotword | `TalTechNLP/whisper-large-v3-turbo-et-verbatim-2604` / `310c550922fc1d1bebf3fad41f9b33ede6652bdc` | 56 | 627,959 s | 622,889 s |
 
-Kõik kolm tööd lõpetasid edukalt ja nende ajutine audio eemaldati. `verbatim-2604` ja `subs` transkript seoti sama varem kontrollitud viie slaidi ning samade videost saadud ilmumisaegadega; slaidituvastust uuesti ei käivitatud. Mudelite sisulist kvaliteeti, terminite õigsust ega teksti täielikkust ei ole selles etapis hinnatud. Need järeldused tehakse alles pärast kasutaja lugemiskontrolli.
+Kõik tabelis esitatud tööd lõpetasid edukalt ja nende ajutine audio eemaldati. `verbatim-2604` ja `subs` transkript seoti sama varem kontrollitud viie slaidi ning samade videost saadud ilmumisaegadega; slaidituvastust uuesti ei käivitatud. Tööde valmimise hetkel ei olnud nende sisulist kvaliteeti hinnatud; hilisema kasutaja lugemiskontrolli järeldus on jaotises 14.
 
-Lisaks valmis 1.11.2026 `verbatim-2604` uus töö 25 loengupõhise hotword'i ja kokkulepitud täitesõnade eemaldamisega. Sõnaajastuste põhjal eemaldati 38 eraldiseisvat `noh`, `aa…` või `ää…` vastet; lõppväljundi kontroll ei leidnud neist ühtegi allesjäänud vastet. Ajutine audio eemaldati ning transkript seoti sama viie varem tuvastatud slaidiga ilma slaidituvastust kordamata. Need on tehnilise töötluse mõõtetulemused, mitte transkriptsiooni sisulise kvaliteedi hinnang.
+Lisaks valmis 1.11.2026 `verbatim-2604` katsetöö 25 loengupõhise hotword'i ja mehaanilise täitesõnade eemaldamisega. Sõnaajastuste põhjal eemaldati 38 eraldiseisvat `noh`, `aa…` või `ää…` vastet. Kasutaja hilisem kõrvutav lugemiskontroll näitas, et eemaldamine ei toimetanud ümbritsevat lauseehitust ega kirjavahemärgistust: teksti jäid poolikud lausealgused ja kohati halvenes arusaadavus. Lahendus lükati seetõttu tagasi ja eemaldati aktiivsest töötlusahelast. Katseväljund jääb alles ajaloolise võrdlusmaterjalina.
+
+2.11.2026 valmis kontrollkatse, milles `verbatim-2604` sai ainsa hotword'ina sõna `COBIT` ning mehaanilist järelpuhastust ei tehtud. Töö lõpetas edukalt, kuid transkript ei sisaldanud ühtegi täpset `COBIT` vastet; endiselt esinesid kujud `COVID` ja `kovid`. Katse ei lisanud kasutaja sisulise lugemiskontrolli järgi hotword'ideta väljundile väärtust.
 
 Uued püsivad väljundid:
 
@@ -187,9 +192,43 @@ Uued püsivad väljundid:
     ├── transcript.json
     ├── transcript.md
     └── transcript_with_slides.md
-└── taltechnlp-turbo-et-verbatim-2604-hotwords-int8/
+├── taltechnlp-turbo-et-verbatim-2604-hotwords-int8/
     ├── run.json
     ├── transcript.json
     ├── transcript.md
     └── transcript_with_slides.md
+└── taltechnlp-turbo-et-verbatim-2604-cobit-hotword-int8/
+    ├── run.json
+    ├── transcript.json
+    └── transcript.md
 ```
+
+## 13. Loengu 8.1 Gemini sisuvõrdlus
+
+Kasutaja lisas sama loengu audiost Gemini abil koostatud transkripti runtime-kataloogi:
+
+```text
+/srv/ttu-loeng/outputs/jobs/l08-1/transcript/gemini/transcript.txt
+```
+
+Faili SHA-256 on `3d16ba35a3272452bda7b40066d860bc9495340da34c9ebf375b234807d7c1b1`. Kasutaja andmetel koostas transkripti `Gemini 3.5 Flash-Lite`. Fail ei sisalda kasutatud juhist ega teenuse täpset konfiguratsiooni, mistõttu neid ei oletata.
+
+Sisuvõrdluses oli Gemini väljund hotword'ideta `verbatim-2604` väljundist selgelt parem erialaterminite ja loengu tähenduse säilitamisel. Gemini kirjutas `COBIT` õigesti 22 korda; hotword'ideta `verbatim-2604` ei kirjutanud seda õigesti kordagi ning kasutas kujusid `COVID`, `kovid` või jättis mõiste lausest välja. Gemini tundis õigesti ära ka fraasid `Accountability`, `Evaluate, Direct, Monitor`, `Align, Plan, Organize`, `Build, Acquire, Implement`, `Manage Continuity`, `Manage Service Security` ja `Performance Monitoring`, millega lokaalsel mudelil oli korduvalt raskusi.
+
+Gemini väljund ei olnud veatu. Näiteks `Deliver, Service, Support` muutus kujule `deliver, service, port`, `Future Direction` kujule `budget direction`, `evitamisel, käitamisel` kujule `ehitamisel, käitlemisel` ning `andmetega ringikäimisest` kujule `andmetega ja curling käimisest`. Mõnes üldkeelses eestikeelses lõigus oli `verbatim-2604` täpsem. Tervikuna mõjutasid Gemini vead siiski sagedamini üksikuid sõnu või fraase, samal ajal kui lokaalse mudeli korduv `COBIT`-i kaotamine või `COVID`-iks muutmine kahjustas loengu keskset tähendust.
+
+Projektis ei ole kontrollitud, kas sama Gemini kasutusviis suudab järjest töödelda täispikki mitmetunniseid loenguid. Tasuta kasutuse sisendi- või väljundimahu piirang võib selle katkestada, kuid seda käsitletakse kontrollimata praktilise riskina, mitte tõendatud piiranguna.
+
+## 14. Lõplik lokaalse mudeli valik
+
+Katsetatud lokaalsetest variantidest valitakse põhikonfiguratsiooniks hotword'ideta `TalTechNLP/whisper-large-v3-turbo-et-verbatim-2604`, revisjon `310c550922fc1d1bebf3fad41f9b33ede6652bdc`, `ct2` alamkataloog ja CPU `int8` arvutus.
+
+Otsus põhineb kasutaja sisulisel lugemiskontrollil ja järgmistel võrdlustel:
+
+1. varasem `verbatim` mudel ei andnud paremat terviktulemust;
+2. `subs` variant oli sisu lakoonilisuse tõttu nõrgem;
+3. 25 hotword'iga katse rikkus teksti ega andnud usaldusväärset terminiparandust;
+4. ühe `COBIT` hotword'iga katse ei tuvastanud sõna `COBIT` õigesti kordagi;
+5. mehaaniline täitesõnade eemaldamine halvendas kohati teksti arusaadavust.
+
+Hotword'e vaikekonfiguratsioonis ei kasutata. Gemini sisutulemus oli parem, kuid Gemini ei ole lokaalse põhikonfiguratsiooni osa ning pikkade loengute järjestikuse töötlemise võime pole projektis kontrollitud.

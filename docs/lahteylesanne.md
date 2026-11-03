@@ -46,7 +46,7 @@ Luua olemasoleval Ubuntu serveril konteinerites töötav rakendus, mis:
 8. seob kinnitatud vastavusega slaidid transkripti õigesse ligikaudsesse kohta;
 9. salvestab inimesele loetava tulemuse, mida saab soovi korral anda välisele suurele keelemudelile edasiseks toimetamiseks või konspekti koostamiseks.
 
-Rakendus ei kirjuta transkripti keeleliselt ümber ega koosta ise konspekti. Kõnetuvastust võib suunata loengupõhise erialaterminite loendiga ning lõppväljundist eemaldatakse kokkulepitud eraldiseisvad täitesõnad.
+Rakendus ei kirjuta transkripti keeleliselt ümber ega koosta ise konspekti. Kõnetuvastust võib katsetamiseks suunata loengupõhise erialaterminite loendiga. Transkripti teksti pärast kõnetuvastust mehaaniliselt ei muudeta.
 
 ## 6. Põhimõisted
 
@@ -63,7 +63,7 @@ Rakendus ei kirjuta transkripti keeleliselt ümber ega koosta ise konspekti. Kõ
 3. Kasutaja valib töödeldava loengu.
 4. Kasutaja võib lisada sama loengu slaidid PPT-, PPTX- või PDF-failina.
 5. Rakendus kontrollib, kas valitud loengul on kasutatav salvestis ja audio.
-6. Rakendus käivitab TalTechNLP kõnetuvastuse taustatööna, edastab valitud loengu erialaterminid mudelile hotword'idena ja eemaldab pärast tuvastust kokkulepitud eraldiseisvad täitesõnad.
+6. Rakendus käivitab TalTechNLP kõnetuvastuse taustatööna ja võib katsekonfiguratsioonis edastada valitud loengu erialaterminid mudelile hotword'idena.
 7. Rakendus kontrollib eraldi, kas loeng sisaldab slaide.
 8. Slaidide olemasolul tuvastab rakendus nende järjekorra ja ligikaudsed vahetusajad.
 9. Eraldi slaidifaili olemasolul kontrollib rakendus selle vastavust videos nähtud slaididele.
@@ -113,13 +113,12 @@ Rakendus peab:
 
 Rakendus peab:
 
-- kasutama eestikeelse kõne tuvastamiseks projektis kontrollitud TalTechNLP mudelit;
+- kasutama eestikeelse kõne tuvastamiseks hotword'ideta `TalTechNLP/whisper-large-v3-turbo-et-verbatim-2604` mudelit;
 - töötlema kogu valitud loengu audio;
 - säilitama transkriptsioonisegmentide algus- ja lõpuajad;
 - säilitama võimalusel sõnataseme ajad;
-- eemaldama ainult kokkulepitud eraldiseisvad täitesõnad `noh`, vähemalt kahest `a`-st koosnevad häälitsused ja vähemalt kahest `ä`-st koosnevad häälitsused;
-- säilitama muu mudeli loodud teksti ning segmendi ajapiirid muutmata kujul;
-- salvestama kasutatud hotword-loendi kontrollsumma, kirjed ja eemaldatud täitesõnade arvu;
+- säilitama mudeli loodud teksti ning segmendi ajapiirid muutmata kujul;
+- salvestama hotword'ide katsekonfiguratsiooni kasutamisel loendi kontrollsumma ja kirjed;
 - salvestama kasutatud mudeli, revisjoni, tööriistad, seadistuse, töö alguse, lõpu ja kestuse;
 - töötama taustal nii, et kasutaja saab töö olekut eraldi kontrollida.
 
@@ -160,7 +159,7 @@ Teadaolev piirang on, et täielikult ühe 20-sekundilise põhivahemiku sisse jä
 UTF-8 Markdown-fail, mis sisaldab:
 
 - loengu nime ja põhilisi metaandmeid;
-- ajatemplitega transkripti, millest on eemaldatud ainult kokkulepitud eraldiseisvad täitesõnad;
+- ajatemplitega toimetamata transkripti;
 - slaidivahetuste tähiseid;
 - slaidipilte või suhtelisi viiteid pildifailidele;
 - slaidide allika kirjeldust;
@@ -186,7 +185,7 @@ Internetist uuesti hangitavat audiot ega videot püsivalt ei säilitata.
 
 Rakenduse Markdown-väljund peab olema terviklik ja arusaadava struktuuriga, et kasutaja saaks selle soovi korral anda Gemini, OpenAI või mõne muu suure välise mudeli sisendiks.
 
-Välise mudeli kasutamine, teenusepakkujale failide saatmine, transkripti keeleline ümberkirjutamine ja konspekti koostamine toimuvad rakendusest eraldi ning ei kuulu MVP2 töövoogu. Kokkulepitud täitesõnade reeglipõhine eemaldamine kuulub töövoogu.
+Välise mudeli kasutamine, teenusepakkujale failide saatmine, transkripti keeleline ümberkirjutamine ja konspekti koostamine toimuvad rakendusest eraldi ning ei kuulu MVP2 töövoogu.
 
 ## 12. Mittefunktsionaalsed nõuded
 
@@ -205,7 +204,7 @@ Välise mudeli kasutamine, teenusepakkujale failide saatmine, transkripti keelel
 
 ## 13. MVP2 ulatusest välja jääv
 
-- transkripti automaatne keeleline ümberkirjutamine peale kokkulepitud täitesõnade eemaldamise;
+- transkripti automaatne keeleline ümberkirjutamine või mehaaniline järelpuhastus;
 - loengukonspekti koostamine;
 - ainekava analüüsimine;
 - eksamifookuse tuvastamine;
@@ -242,7 +241,7 @@ MVP2 loetakse esimese kontrolljuhtumi põhjal edukaks, kui:
 2. rakendus kuvab kogumiku loengud ja eristab salvestise olemasolu;
 3. kasutaja saab valida ühe kättesaadava salvestisega loengu;
 4. rakendus loob kogu loengust eestikeelse ajatemplitega transkripti;
-5. transkriptsioonitekst säilib peale kokkulepitud eraldiseisvate täitesõnade eemaldamise; segmentide ajapiire ei muudeta ja eemaldamata sõnade ajad säilivad;
+5. transkriptsioonitekst, segmentide ajapiirid ja sõnaajad säilivad mudeli väljundiga võrreldes muutmata;
 6. transkripti saab pisteliselt võrrelda salvestisega;
 7. rakendus kontrollib ja salvestab slaidide olemasolu või puudumise;
 8. videost leitud slaidid saavad järjekorranumbri ja ligikaudse ilmumisaja;
