@@ -2,7 +2,7 @@
 
 ## 1. Dokumendi päritolu
 
-Koostaja: AI (OpenAI Codex) kasutaja kinnitatud MVP2 ülesandepüstituse ning projekti kontrollitud teostuse põhjal.
+Koostaja: AI (OpenAI Codex) kasutaja kinnitatud MVP2 ülesandepüstituse, projekti kontrollitud teostuse ja 3.11.2026 kinnitatud MVP3 arhitektuuriotsuste põhjal.
 
 ## 2. Sisukord
 
@@ -14,7 +14,7 @@ Koostaja: AI (OpenAI Codex) kasutaja kinnitatud MVP2 ülesandepüstituse ning pr
 
 ## 3. Lühikirjeldus
 
-Rakendus leiab avalikust Echo360 loengukogumikust loengud ja nende meedia ning loob valitud eestikeelsest loengust hotword'ideta TalTechNLP `verbatim-2604` kõnetuvastusmudeliga täieliku ajatemplitega transkripti. Rakendus tuvastab videost slaidid, seob need transkriptsioonisegmentidega ja võimaldab kasutada kasutaja antud PDF-, PPT- või PPTX-faili parema slaidipildi allikana. Hotword'ide tugi säilib kontrollkatseteks, kuid mudeli loodud teksti mehaaniliselt ei järelpuhastata; keelelist toimetamist ega konspekti koostamist rakendus ei tee. Täpne ulatus on failis [`docs/lahteylesanne.md`](docs/lahteylesanne.md), arhitektuur failis [`docs/tehniline_spek.md`](docs/tehniline_spek.md) ja slaiditöötlus failis [`docs/slaiditootlus.md`](docs/slaiditootlus.md).
+Rakendus leiab avalikust Echo360 loengukogumikust loengud ja nende meedia ning loob valitud eestikeelsest loengust hotword'ideta TalTechNLP `verbatim-2604` kõnetuvastusmudeliga täieliku ajatemplitega transkripti. Rakendus tuvastab videost slaidid, seob need transkriptsioonisegmentidega ja võimaldab kasutada kasutaja antud PDF-, PPT- või PPTX-faili parema slaidipildi allikana. Hotword'ide tugi säilib kontrollkatseteks, kuid mudeli loodud teksti mehaaniliselt ei järelpuhastata; keelelist toimetamist ega konspekti koostamist rakendus ei tee. Täpne ulatus on failis [`docs/lahteylesanne.md`](docs/lahteylesanne.md), arhitektuur failis [`docs/tehniline_spek.md`](docs/tehniline_spek.md), MVP3 veebirakenduse ja ORDS-i leping failis [`docs/mvp3_veeb_ja_ords.md`](docs/mvp3_veeb_ja_ords.md), andmemudel failis [`db/erd.md`](db/erd.md) ning slaiditöötlus failis [`docs/slaiditootlus.md`](docs/slaiditootlus.md).
 
 ## 4. Hetkeseis
 
@@ -40,6 +40,8 @@ Loengust 8.1 võrreldi senist `whisper-large-v3-turbo-et-verbatim`, uuemat `whis
 Lisaks on loengust 8.1 alles `verbatim-2604` katsevariant, mis kasutas 25 loengupõhist hotword'i ja mehaanilist täitesõnade järelpuhastust. Kasutaja võrdluses muutis järelpuhastus teksti kohati halvemini arusaadavaks ning lahendus eemaldati aktiivsest töötlusahelast. Katseväljund säilib võrdlusmaterjalina.
 
 Sama audio `Gemini 3.5 Flash-Lite` transkript säilitas `COBIT`-i ja teisi erialatermineid lokaalsest mudelist selgelt paremini. Kasutatud juhist ega teenuse täpset konfiguratsiooni pole failis dokumenteeritud ning pikkade loengute järjestikust töötlemist pole kontrollitud. Tasuta kasutuse mahu võimalik piirang jääb seetõttu kontrollimata praktiliseks riskiks.
+
+MVP3 arendus toimub harus `mvp3`. Kinnitatud on FastAPI veebiliides, püsiv konteineriseeritud worker ning `ttu_loeng` rakenduse `asr` ja `slides` tööde liidestamine serveriülese ORDS-i järjekorraga; need lepinguandmed on ORDS-is registreeritud. ORDS on ainus järjekorra ja käivitamisloa autoriteet; rakendus täidab claim'itud töö sisu ise. Kasutaja saab korraga esitada mitu loengut ja siduda igaühega oma slaidifaili. Avalik aadress on `https://ttu-loeng.fun-o.eu`; nginx, DNS ja TLS seadistatakse pärast esimese koodiversiooni valmimist.
 
 ## 5. Käivitamine
 

@@ -100,6 +100,7 @@ Koostaja: AI (OpenAI Codex), kasutaja juhiste järgi. Käesoleva dokumendi esime
 - Serveri jagatud CPU-ressursi tõttu tuleb ASR ning video- ja slaiditöötluse rasked tööd vaikimisi järjestada.
 - API teenused peavad tagastama konkreetse kasutusjuhtumi jaoks vajaliku minimaalse andmehulga.
 - Kui lisatakse püsiv andmebaas, on autoriteetne aeg UTC ning kasutajaliides kuvab aja kasutaja lokaalses ajavööndis.
+- Kõik rakenduse skeemi tabelid kasutavad `start_date`, `end_date`, `created` ja `last_updated` veerge. Füüsilist kustutamist ei kasutata ning suletud kirjed ei tohi tavavoogudes nähtavale jääda.
 - Kasutajaliidese tekstid peavad olema tõlgetest, mitte kõvakodeeritud.
 - Eelista korduvate väärtuste puhul eeldefineeritud konstante ja ühist äriloogikat.
 - Saladused, ligipääsutokenid ja autentimisküpsised peavad tulema `.env`-ist või muust saladuste hoidlast ning neid ei tohi kirjutada Git-i, logidesse ega väljunditesse.
@@ -114,6 +115,9 @@ Koostaja: AI (OpenAI Codex), kasutaja juhiste järgi. Käesoleva dokumendi esime
 - [`docs/agents.md`](agents.md) — projekti siduvad tööreeglid.
 - [`docs/lahteylesanne.md`](lahteylesanne.md) — rakenduse eesmärk, ulatus ja vastuvõtukriteeriumid.
 - [`docs/tehniline_spek.md`](tehniline_spek.md) — tehniline arhitektuur, andmemudel, töövoog ja etapistus.
+- [`docs/mvp3_veeb_ja_ords.md`](mvp3_veeb_ja_ords.md) — MVP3 veebirakenduse, püsiva workeri, ORDS-i töölepingu ja mitme loengu kasutajavoo kinnitatud arhitektuur.
+- [`db/erd.md`](../db/erd.md) — MVP3 Oracle'i andmemudel, Mermaid ER-diagramm, tabelite veerud, seosed, soft delete ning ORDS-i ja rakenduse oleku piir.
+- [`db/schema/001_core_schema.sql`](../db/schema/001_core_schema.sql) — MVP3 Oracle'i sequence'ide, tabelite, seoste, unikaalsuste ja indeksite loomise skript.
 - [`docs/slaiditootlus.md`](slaiditootlus.md) — slaidide olemasolu kontrolli, tuvastamise, sobitamise ja transkriptiga sidumise detailne lahendus.
 - [`docs/asr_benchmark.md`](asr_benchmark.md) — Etapp 2 kontrollkomplekt, mudelivõrdlus, mõõtetulemused ja otsus.
 
@@ -122,6 +126,7 @@ Koostaja: AI (OpenAI Codex), kasutaja juhiste järgi. Käesoleva dokumendi esime
 - [`docs/initial_materials/L03_slaidikandidaat.pptx`](initial_materials/L03_slaidikandidaat.pptx) — kasutaja antud muutmata PowerPointi fail, mis pealkirja, kirjelduse ja põgusa sisukontrolli järgi on tõenäoliselt loengu 3 slaidipakk; faili täpne päritolu ja vastavus salvestises kasutatud slaididele ei ole teada.
 - [`docs/initial_materials/L03_slaidikandidaat.origin.md`](initial_materials/L03_slaidikandidaat.origin.md) — slaidikandidaadi teadaolev päritolu, struktuur, kontrollsumma ja kasutuspiir.
 - Echo360 avalik kursuselink, kursuse metaandmed, loengusalvestised ja slaidid.
+- `/home/ubuntu/projektid/jenkins/docs/api.md`, `/home/ubuntu/projektid/jenkins/docs/tehniline_spek_ords.md`, `/home/ubuntu/projektid/jenkins/db/schema/001_core_schema.sql` ja `/home/ubuntu/projektid/jenkins/db/api/002_jobs_api_package.sql` — serveriülese ORDS-i järjekorra API, sõltuvused, registreeringud ja claim'i autoriteetne teostus.
 - `err_video_to_text` dokumentatsioon ja kood ainult nende komponentide analüüsimisel, mida käesolevas projektis soovitakse taaskasutada.
 - `/home/ubuntu/fun_o/nginx/default.conf` ja `/home/ubuntu/fun_o/docker-compose.yml` ühise nginx-veebiserveri või `funo_net` võrguga integratsiooni kavandamisel ja muutmisel.
 
@@ -138,7 +143,7 @@ Koostaja: AI (OpenAI Codex), kasutaja juhiste järgi. Käesoleva dokumendi esime
 - [`Dockerfile.slides`](../Dockerfile.slides) — FFmpegi, Tesseracti ja PyMuPDF-iga slaiditöötluse konteinerpakendus.
 - [`benchmarks/datasets/lecture3_v1.json`](../benchmarks/datasets/lecture3_v1.json) — loengu 3 lukustatud ASR-kontrollkomplekti masinloetav kirjeldus.
 - [`hotwords/icm0032/l03.txt`](../hotwords/icm0032/l03.txt) ja [`hotwords/icm0032/l08-1.txt`](../hotwords/icm0032/l08-1.txt) — varasemates katsetes kasutatud loengupõhised erialaterminid; [`hotwords/icm0032/l08-1-cobit.txt`](../hotwords/icm0032/l08-1-cobit.txt) — loengu 8.1 kontrollkatse üksiku `COBIT` hotword'iga.
-- [`.env.example`](../.env.example) — runtime’i, konteineri kasutaja ja kodukataloogi seadistuse mall.
+- [`.env.example`](../.env.example) — runtime’i, konteineri kasutaja, kodukataloogi ja Oracle'i ühenduse saladusteta seadistusmall.
 - [`tests/test_echo360.py`](../tests/test_echo360.py) — olekuloogika võrguvabad kontrollid.
 - [`tests/test_asr_benchmark.py`](../tests/test_asr_benchmark.py) — ASR-i kvaliteedimõõdikute ja videoallika valiku võrguvabad kontrollid.
 
@@ -149,6 +154,8 @@ Registrit tuleb täiendada kohe, kui projektile lisandub README, andmeskeem, API
 - Enne igat sisulist vastust loe vähemalt käesolev juhend ja ülesandega seotud põhidokumendi osad; koodi olemasolul kontrolli vastavat teostust.
 - Kui muudad rakenduse eesmärki, ulatust, väljundeid või vastuvõtukriteeriume, loe `docs/lahteylesanne.md` ja `docs/tehniline_spek.md`.
 - Kui muudad arhitektuuri, andmemudelit, tööde järjekorda, konteinerite vastutusi või ressursikasutust, loe `docs/tehniline_spek.md`, asjakohane konfiguratsioon ja kogu mõjutatud töötlusahel.
+- Kui muudad MVP3 veebirakendust, ORDS-i lepingut, workeri adaptereid või taustatööde olekute kuvamist, loe `docs/mvp3_veeb_ja_ords.md` ja Jenkinsi projekti autoriteetsed ORDS-i allikad.
+- Kui muudad rakenduse püsivat andmemudelit, loe `db/erd.md` ning ajakohasta diagramm, tabelikirjeldused ja kõik mõjutatud migratsioonid koos.
 - Kui muudad avalikku hostinime, TLS-i, pöördproksit, veebiliidese serveerimist või ühise Docker-võrgu kasutust, loe enne `/home/ubuntu/fun_o/nginx/default.conf`, `/home/ubuntu/fun_o/docker-compose.yml` ja mõlema mõjutatud projekti juurutusdokumentatsioon.
 - Kui muudad Echo360 resolverit või meediaallikate salvestamist, kontrolli toimivat avaliku sessiooni loomise voogu, tegelikke võrgupäringuid ja olemasolevaid resolveri artefakte.
 - Kui muudad ASR-i või tekstisegmentide ajastust, loe vastavad mudeli- ja hindamisdokumendid, olemasolev teostus ning kontrollandmed. `err_video_to_text` taaskasutuse korral loe enne selle projekti asjakohased allikad.

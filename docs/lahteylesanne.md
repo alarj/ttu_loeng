@@ -2,7 +2,7 @@
 
 ## 1. Dokumendi päritolu
 
-Koostaja: AI (OpenAI Codex) kasutaja 1.11.2026 kinnitatud uue ülesandepüstituse ja projekti tegelike katsetulemuste põhjal. Dokument asendab varasema konspektirakenduse lähteülesande; varasem versioon säilib Git-ajaloos märgendi `ver0.1` all.
+Koostaja: AI (OpenAI Codex) kasutaja 1.11.2026 kinnitatud uue ülesandepüstituse, projekti tegelike katsetulemuste ning 3.11.2026 kinnitatud MVP3 veebirakenduse ja ORDS-i arhitektuuriotsuste põhjal. Dokument asendab varasema konspektirakenduse lähteülesande; varasem versioon säilib Git-ajaloos märgendi `ver0.1` all ja MVP2 seis märgendi `ver0.2` all.
 
 ## 2. Sisukord
 
@@ -19,10 +19,11 @@ Koostaja: AI (OpenAI Codex) kasutaja 1.11.2026 kinnitatud uue ülesandepüstitus
 - [13. MVP2 ulatusest välja jääv](#13-mvp2-ulatusest-välja-jääv)
 - [14. Esimene kontrolljuhtum](#14-esimene-kontrolljuhtum)
 - [15. Vastuvõtukriteeriumid](#15-vastuvõtukriteeriumid)
+- [16. MVP3 laiendus](#16-mvp3-laiendus)
 
 ## 3. Dokumendi eesmärk
 
-Käesolev dokument määrab rakenduse eesmärgi, ulatuse, sisendid, väljundid ja vastuvõtukriteeriumid. Tehniline teostus on kirjeldatud failis [`tehniline_spek.md`](tehniline_spek.md). Slaidide tuvastamise, töötlemise ja transkriptiga sidumise detailne lahendus on eraldi failis [`slaiditootlus.md`](slaiditootlus.md).
+Käesolev dokument määrab rakenduse eesmärgi, ulatuse, sisendid, väljundid ja vastuvõtukriteeriumid. Jaotised 4–15 kirjeldavad MVP2 töötlusmootori alust. MVP3 muudab selle mitme loengu veebirakenduseks ja lisab serveriülese ORDS-i järjekorra integratsiooni jaotise 16 ning faili [`mvp3_veeb_ja_ords.md`](mvp3_veeb_ja_ords.md) järgi. Tehniline teostus on kirjeldatud failis [`tehniline_spek.md`](tehniline_spek.md). Slaidide tuvastamise, töötlemise ja transkriptiga sidumise detailne lahendus on eraldi failis [`slaiditootlus.md`](slaiditootlus.md).
 
 ## 4. Probleem ja kontrollitud lähteolukord
 
@@ -197,9 +198,9 @@ Välise mudeli kasutamine, teenusepakkujale failide saatmine, transkripti keelel
 - Valmis transkriptsiooni ei arvutata slaiditöötluse muutmise või kordamise tõttu uuesti.
 - Ajutised audio- ja videofailid asuvad ainult runtime'i `work/` kataloogis ning eemaldatakse pärast töö lõppu.
 - Mahukaid audio-, video- ja mudelifailide koopiaid ei salvestata Git-repositooriumi ega andmebaasi.
-- Esimene versioon kasutab failipõhist tööolekut ega vaja andmebaasi.
-- Kui püsiv andmebaas muutub vajalikuks, kasutatakse olemasolevat Oracle Always Free andmebaasi ja projektile eraldatud oma schemat. Teise projekti schema kasutamine vajab eelnevat põhjendust ning dokumenteerimist mõlemas projektis.
-- Võimalik veebiliides avaldatakse `fun-o.eu` domeeni all ühise nginx-serveri kaudu. TLS-i haldab olemasolev Let's Encrypti lahendus.
+- MVP2 töötlusmootor kasutab failipõhist tööolekut. MVP3 veebirakendus kasutab olemasolevas Oracle Always Free andmebaasis projektile eraldatud oma skeemi kasutajate, loengutöötluste, ORDS-i tööseoste ja üleslaadimiste hoidmiseks; täpne mudel on failis [`../db/erd.md`](../db/erd.md).
+- FastAPI ja worker kasutavad rakenduse skeemiga otseühendust `python-oracledb` ühenduste pooli kaudu. ORDS-i HTTP API-d kasutatakse ainult serveriülese tööjärjekorra jaoks.
+- MVP3 veebiliides avaldatakse aadressil `https://ttu-loeng.fun-o.eu` olemasoleva ühise nginx-serveri kaudu. Nginx, DNS ja TLS seadistatakse eraldi pärast esimese koodiversiooni valmimist.
 - Saladusi, ligipääsutokeneid ja autentimisküpsiseid ei salvestata Git-i, logidesse ega väljunditesse.
 
 ## 13. MVP2 ulatusest välja jääv
@@ -252,3 +253,21 @@ MVP2 loetakse esimese kontrolljuhtumi põhjal edukaks, kui:
 13. ajutine audio ja video eemaldatakse pärast edukat või nurjunud töötlust;
 14. töö olek, kasutatud mudel, tööriistad, kestus ja võimalikud vead on kontrollitavad;
 15. slaiditöötluse kordamine ei käivita valmis kõnetuvastust uuesti.
+
+## 16. MVP3 laiendus
+
+MVP3 peab lisama olemasolevale töötlusmootorile:
+
+- FastAPI veebiliidese;
+- võimaluse valida ja esitada korraga mitu Echo360 loengut;
+- võimaluse siduda iga valitud loenguga oma PPT-, PPTX- või PDF-fail;
+- kasutajavaate, mis kuvab iga loengu ASR-i ja slaiditöötluse autoriteetset ORDS-i olekut ning valmis artefakte;
+- püsiva konteineriseeritud workeri, mis täidab ORDS-ist claim'itud `asr` ja `slides` töid;
+- ORDS-i rakenduskoodi `ttu_loeng`;
+- sama loengu slaiditöö sõltuvuse ASR-ist `previous_job_id` kaudu.
+
+ORDS on ainus tööjärjekorra, järjestuse ja käivitamisloa autoriteet. Rakendus ei pea kohalikku järjekorda, ei vali ise järgmist tööd ega käivita ressursimahukat tööd ilma ORDS-i claim'ita. ORDS ei täida töö sisu: ASR-i ja slaiditöötluse protsessi, failid, logid ja artefaktid haldab `ttu_loeng` rakendus.
+
+ASR ja slaiditöötlus kasutavad juba töötavat püsivat worker-konteinerit. Uue töö esitamine ei ehita image'it ega loo uut töötluskonteinerit. Worker on piiratud vaikimisi kolme CPU-tuumaga; ORDS väldib teiste liidestatud rakenduste mahukate tööde samaaegset aktiivseks muutumist.
+
+MVP3 täpne tööleping, oleku autoriteet, kasutajavoog, konteinerijaotus ja etapistus on failis [`mvp3_veeb_ja_ords.md`](mvp3_veeb_ja_ords.md).

@@ -2,7 +2,7 @@
 
 ## 1. Dokumendi päritolu
 
-Koostaja: AI (OpenAI Codex) kasutaja kinnitatud MVP2 lähteülesande, projekti olemasoleva koodi ja kontrollitud runtime-artefaktide põhjal. Dokument asendab varasema konspektirakenduse tehnilise spetsifikatsiooni; vana versioon säilib Git-ajaloos märgendi `ver0.1` all.
+Koostaja: AI (OpenAI Codex) kasutaja kinnitatud MVP2 lähteülesande, projekti olemasoleva koodi, kontrollitud runtime-artefaktide ja 3.11.2026 kinnitatud MVP3 arhitektuuriotsuste põhjal. Dokument asendab varasema konspektirakenduse tehnilise spetsifikatsiooni; vana versioon säilib Git-ajaloos märgendi `ver0.1` all ja MVP2 seis märgendi `ver0.2` all.
 
 ## 2. Sisukord
 
@@ -22,12 +22,13 @@ Koostaja: AI (OpenAI Codex) kasutaja kinnitatud MVP2 lähteülesande, projekti o
 - [16. Testimine](#16-testimine)
 - [17. Teostusetapid](#17-teostusetapid)
 - [18. Avatud tehnilised otsused](#18-avatud-tehnilised-otsused)
+- [19. MVP3 veebirakendus ja keskne tööjärjekord](#19-mvp3-veebirakendus-ja-keskne-tööjärjekord)
 
 ## 3. Dokumendi roll
 
-Käesolev dokument kirjeldab faili [`lahteylesanne.md`](lahteylesanne.md) nõuete tehnilist teostust. Slaiditöötluse detailid on failis [`slaiditootlus.md`](slaiditootlus.md).
+Käesolev dokument kirjeldab faili [`lahteylesanne.md`](lahteylesanne.md) nõuete tehnilist teostust. Slaiditöötluse detailid on failis [`slaiditootlus.md`](slaiditootlus.md) ning MVP3 veebirakenduse ja ORDS-i täpne leping failis [`mvp3_veeb_ja_ords.md`](mvp3_veeb_ja_ords.md).
 
-Dokument kirjeldab olemasolevat teostust ja veel kontrollimist vajavaid MVP2 olukordi. See ei anna luba andmebaasi, ühise nginx-serveri, TLS-i ega kõrvalprojektide muutmiseks; sellised muudatused vajavad eraldi kasutaja kinnitust faili [`agents.md`](agents.md) järgi.
+Dokument kirjeldab olemasolevat MVP2 teostust ja MVP3 kinnitatud arhitektuuri. Nginx, DNS ja TLS kuuluvad MVP3 ulatusse, kuid nende tegelik muutmine toimub eraldi pärast esimese koodiversiooni valmimist. Dokument ei anna luba andmebaasi ega kõrvalprojektide andmete muutmiseks; sellised muudatused vajavad eraldi kasutaja kinnitust faili [`agents.md`](agents.md) järgi.
 
 ## 4. Kontrollitud lähteolukord
 
@@ -343,7 +344,7 @@ Slaidide puudumine või slaiditöötluse viga ei muuda edukat transkriptsiooni n
 - Slaidipildid ja transkript säilivad püsiva väljundina.
 - Enne veebiliidese avaldamist tuleb eraldi hinnata loengumaterjalide säilitamise ja jagamise õigusi.
 
-MVP2 ei vaja andmebaasi. Kui püsiv andmebaas osutub hiljem vajalikuks, kasutatakse Oracle Always Free andmebaasi ning projektile eraldatud oma schemat. Ristkasutus teise projekti schemaga vajab eraldi põhjendust ja dokumentatsiooni mõlemas projektis.
+MVP2 töötlusmootor ei vaja andmebaasi. MVP3 veebirakendus kasutab Oracle Always Free andmebaasis projektile eraldatud oma skeemi loengutöötluste, ORDS-i tööseoste ja üleslaadimiste hoidmiseks. FastAPI ja worker ühenduvad sama rakenduse skeemiga otse `python-oracledb` ühenduste pooli kaudu; ORDS-i HTTP API-d kasutatakse ainult serveriülese tööjärjekorra jaoks. Mahukad failid jäävad fikseeritud kataloogistruktuuriga failisüsteemi ja neid kirjeldavad olemasolevad manifestid. Andmemudel on failis [`../db/erd.md`](../db/erd.md).
 
 ## 16. Testimine
 
@@ -430,6 +431,16 @@ Loengu 8.1 kontroll määras praegused tööväärtused. Enne nende üldiseks so
 5. milline videoresolutsioon sobib tuvastuseks ja milline lõpliku pildi allikaks;
 6. kuidas märgitakse osaliselt kattuv või erineva versiooniga slaidifail;
 7. MVP2 käsurea lõplik leping;
-8. võimalik veebiliidese hostinimi ja selle TLS-sertifikaadi katvus.
+8. kasutajaliidese autentimise viis.
 
 Neid otsuseid ei tehta dokumenteerimata oletuse ega ühe näite põhjal.
+
+## 19. MVP3 veebirakendus ja keskne tööjärjekord
+
+MVP3 lisab vähemalt kaks püsivat konteinerit: FastAPI veebiteenuse ja ühe püsiva workeri. Worker sisaldab nii ASR-i kui ka slaiditöötluse registreeritud adapterit ning kasutab hosti püsivaid runtime- ja mudelivahemälu volume'eid. Ühegi töö jaoks ei ehitata uut image'it ega käivitata uut töötluskonteinerit.
+
+Ressursimahukad tööliigid on ORDS-is `application_code=ttu_loeng` all `asr` ja `slides`. Sama loengu slaiditöö `previous_job_id` viitab selle loengu ASR-i ORDS-i `job_id` väärtusele. ORDS on ainus järjekorra ja käivitamisloa autoriteet; rakendus ei pea kohalikku järjekorda. Rakenduse püsiv olek seob loengu, kasutaja slaidifaili ja ORDS-i tööde ID-d, kuid seda ei kasutata järgmise töö valimiseks.
+
+Kasutaja saab korraga valida mitu loengut ja siduda iga loenguga oma valikulise slaidifaili. Veebiliides kuvab iga loengu ASR-i, sõltuva slaiditöö ja valmis tulemuse. ORDS-i olek on järjekorra ja täitmise tõeallikas; rakenduse artefaktide olemasolu ja sisemised vead on rakenduse tõeallikas.
+
+Avalik aadress on `https://ttu-loeng.fun-o.eu`. Rakendus kasutab olemasolevat nginx veebiserverit, kuid pöördproksi, DNS-i ja TLS-i seadistus tehakse MVP3 hilisemas etapis pärast esimese koodiversiooni valmimist. Täielik leping ja etapistus on failis [`mvp3_veeb_ja_ords.md`](mvp3_veeb_ja_ords.md).
