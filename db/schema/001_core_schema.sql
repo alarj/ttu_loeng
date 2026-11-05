@@ -52,7 +52,7 @@ CREATE TABLE lecture_processings (
         DEFAULT lecture_processings_seq.NEXTVAL NOT NULL,
     public_id VARCHAR2(36 CHAR),
     submission_id NUMBER(19) NOT NULL,
-    echo_lesson_id VARCHAR2(36 CHAR) NOT NULL,
+    echo_lesson_id VARCHAR2(1000 CHAR) NOT NULL,
     lecture_title VARCHAR2(500 CHAR),
     lecture_start_at TIMESTAMP,
     duration_seconds NUMBER(12,3),
@@ -179,7 +179,7 @@ COMMENT ON COLUMN lecture_processings.public_id IS
 COMMENT ON COLUMN lecture_processings.submission_id IS
     'Esitamine, mille koosseisu loeng kuulub';
 COMMENT ON COLUMN lecture_processings.echo_lesson_id IS
-    'Echo360 loengu UUID';
+    'Echo360 loengu identifikaator';
 COMMENT ON COLUMN lecture_processings.lecture_title IS
     'Loengu nimi lahendamise hetkel';
 COMMENT ON COLUMN lecture_processings.lecture_start_at IS

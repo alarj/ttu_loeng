@@ -41,11 +41,23 @@ Lisaks on loengust 8.1 alles `verbatim-2604` katsevariant, mis kasutas 25 loengu
 
 Sama audio `Gemini 3.5 Flash-Lite` transkript säilitas `COBIT`-i ja teisi erialatermineid lokaalsest mudelist selgelt paremini. Kasutatud juhist ega teenuse täpset konfiguratsiooni pole failis dokumenteeritud ning pikkade loengute järjestikust töötlemist pole kontrollitud. Tasuta kasutuse mahu võimalik piirang jääb seetõttu kontrollimata praktiliseks riskiks.
 
-MVP3 arendus toimub harus `mvp3`. Kinnitatud on FastAPI veebiliides, püsiv konteineriseeritud worker ning `ttu_loeng` rakenduse `asr` ja `slides` tööde liidestamine serveriülese ORDS-i järjekorraga; need lepinguandmed on ORDS-is registreeritud. ORDS on ainus järjekorra ja käivitamisloa autoriteet; rakendus täidab claim'itud töö sisu ise. Kasutaja saab korraga esitada mitu loengut ja siduda igaühega oma slaidifaili. Avalik aadress on `https://ttu-loeng.fun-o.eu`; nginx, DNS ja TLS seadistatakse pärast esimese koodiversiooni valmimist.
+MVP3 arendus toimub harus `mvp3`. Teostatud on FastAPI HTML-liides, Google Identity Services ID-tokeni põhine autentimine, Oracle'i hoidla, ORDS OAuth-klient, mitme loengu esitamine, valmis slaididega transkripti avalik Markdowni otselink ja püsiv worker. ORDS on ainus järjekorra ja käivitamisloa autoriteet; rakendus täidab claim'itud `asr` ja `slides` töö sisu ise. HTML-liides kasutab eraldi teenusekihti, mida saab järgmises etapis kasutada JSON API. Domeeni `ttu-loeng.fun-o.eu` DNS-kirje, nginxi HTTP→HTTPS suunamine, nime sisaldav ühine TLS-sertifikaat ja HTTPS-pöördproksi konteinerile `ttu-loeng-web:8000` on seadistatud. Veebikonteiner töötab ühises `funo_net` võrgus ning Nginx lahendab selle muutuva konteineri-IP Docker DNS-i kaudu dünaamiliselt.
+
+MVP2 käigus valminud L03 ja L08.1 tulemused on lisatud rakenduse andmebaasi ajalooliste loengutena. L03 kasutab olemasolevat põhitranskripti ning L08.1 slaididega ühendatud Markdowni ja olemasolevat PPTX-slaidiallikat. Neile ei ole loodud tagantjärele ORDS-i operatsioone, sest algsed töötlused ei toimunud keskse järjekorra kaudu.
+
+Sisselogitud kasutaja valib esmalt `SUBMISSIONS.COURSE_TITLE` järgi järjestatud kursuse. Kursuse vaates kuvatakse selle loengud `LECTURE_PROCESSINGS.LECTURE_TITLE` järgi järjestatud kompaktses nimekirjas koos Echo360 tegeliku toimumiskuupäevaga. Administraator saab sulgeda konkreetse loengutöötluse soft delete'iga. Uue loengu lisamisel võib administraator valida olemasoleva kursuse nime järgi või sisestada uue Echo360 avaliku kursuselingi.
 
 ## 5. Käivitamine
 
-Kopeeri `.env.example` failiks `.env` ning kontrolli hosti runtime-kataloogi ja konteineri UID/GID väärtused.
+Kopeeri `.env.example` failiks `.env`, täida Oracle'i ja ORDS-i saladused, määra `GOOGLE_CLIENT_ID` ning genereeri `SESSION_SECRET`. Google Console'i Authorized JavaScript origins loendis peab olema `https://ttu-loeng.fun-o.eu`. Google Client Secretit ega redirect URI-t see autentimisvoog ei kasuta.
+
+Püsiva veebirakenduse ja workeri käivitamine:
+
+```bash
+docker compose up -d --build web worker
+```
+
+DNS, nginxi HTTP→HTTPS suunamine, `ttu-loeng.fun-o.eu` nime sisaldav TLS-sertifikaat ja HTTPS-pöördproksi on seadistatud. Avalik aadress vastab HTTPS-i kaudu ning Google'i autentimise tervikkontrolli saab teha brauseris.
 
 Echo360 lingi kontroll:
 
@@ -107,7 +119,7 @@ docker compose --profile slides run --rm slides process \
 Püsivad tööartefaktid asuvad hostis vaikimisi `/srv/ttu-loeng/outputs/` ja konteineris `/runtime/outputs/`.
 
 ```text
-outputs/jobs/<job_id>/
+outputs/jobs/<lecture_processing_id>/
 ├── import/
 ├── transcript/<configuration_id>/
 │   ├── run.json

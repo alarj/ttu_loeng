@@ -2,7 +2,7 @@
 
 ## 1. Dokumendi päritolu
 
-Koostaja: AI (OpenAI Codex) kasutaja 1.11.2026 kinnitatud uue ülesandepüstituse, projekti tegelike katsetulemuste ning 3.11.2026 kinnitatud MVP3 veebirakenduse ja ORDS-i arhitektuuriotsuste põhjal. Dokument asendab varasema konspektirakenduse lähteülesande; varasem versioon säilib Git-ajaloos märgendi `ver0.1` all ja MVP2 seis märgendi `ver0.2` all.
+Koostaja: AI (OpenAI Codex) kasutaja 1.11.2026 kinnitatud uue ülesandepüstituse, projekti tegelike katsetulemuste ning 3.–4.11.2026 kinnitatud MVP3 veebirakenduse, ligipääsu ja ORDS-i arhitektuuriotsuste põhjal. Dokument asendab varasema konspektirakenduse lähteülesande; varasem versioon säilib Git-ajaloos märgendi `ver0.1` all ja MVP2 seis märgendi `ver0.2` all.
 
 ## 2. Sisukord
 
@@ -200,7 +200,7 @@ Välise mudeli kasutamine, teenusepakkujale failide saatmine, transkripti keelel
 - Mahukaid audio-, video- ja mudelifailide koopiaid ei salvestata Git-repositooriumi ega andmebaasi.
 - MVP2 töötlusmootor kasutab failipõhist tööolekut. MVP3 veebirakendus kasutab olemasolevas Oracle Always Free andmebaasis projektile eraldatud oma skeemi kasutajate, loengutöötluste, ORDS-i tööseoste ja üleslaadimiste hoidmiseks; täpne mudel on failis [`../db/erd.md`](../db/erd.md).
 - FastAPI ja worker kasutavad rakenduse skeemiga otseühendust `python-oracledb` ühenduste pooli kaudu. ORDS-i HTTP API-d kasutatakse ainult serveriülese tööjärjekorra jaoks.
-- MVP3 veebiliides avaldatakse aadressil `https://ttu-loeng.fun-o.eu` olemasoleva ühise nginx-serveri kaudu. Nginx, DNS ja TLS seadistatakse eraldi pärast esimese koodiversiooni valmimist.
+- MVP3 veebiliides avaldatakse aadressil `https://ttu-loeng.fun-o.eu` olemasoleva ühise nginx-serveri kaudu. DNS-kirje, nginxi HTTP→HTTPS suunamine, nime sisaldav ühine TLS-sertifikaat ja HTTPS-pöördproksi töötavale veebikonteinerile on seadistatud.
 - Saladusi, ligipääsutokeneid ja autentimisküpsiseid ei salvestata Git-i, logidesse ega väljunditesse.
 
 ## 13. MVP2 ulatusest välja jääv
@@ -265,6 +265,13 @@ MVP3 peab lisama olemasolevale töötlusmootorile:
 - püsiva konteineriseeritud workeri, mis täidab ORDS-ist claim'itud `asr` ja `slides` töid;
 - ORDS-i rakenduskoodi `ttu_loeng`;
 - sama loengu slaiditöö sõltuvuse ASR-ist `previous_job_id` kaudu.
+- serveri teiste rakendustega ühtse Google Identity Services ID-tokeniga sisselogimise, mille esimene edukas sisselogimine loob `USER` rolliga rakenduse kasutaja;
+- ligipääsureegli, mille järgi `USER` näeb ja laadib alla kõigi tööde valmis tulemusi ning `ADMIN` võib lisaks uusi töid esitada ja avalikke linke hallata;
+- administraatori võimaluse sulgeda konkreetne loengutöötlus soft delete'iga ilma sama kursuse teisi loenguid või submission'it sulgemata;
+- olemasoleva kursuse valimise nime järgi uute loengute lisamisel; valitud kursuse Echo360 URL loetakse andmebaasist, samas säilib eraldi võimalus sisestada uus URL;
+- aegunud sessiooniga kaitstud HTML-lehelt puhtale Google'i sisselogimisvaatele suunamise;
+- sisselogimiseta slaididega ühendatud valmis Markdowni ja selle piltide ZIP-paketi allalaadimise ainult konkreetse loengu väärtustatud `public_id` otselingi kaudu; avalikku linki ei saa luua enne selle tulemuse valmimist ning tööde nimekiri ei ole anonüümselt nähtav;
+- ühise teenusekihi, mida kasutavad HTML-marsruudid ja mille peale lisatakse järgmises etapis JSON API.
 
 ORDS on ainus tööjärjekorra, järjestuse ja käivitamisloa autoriteet. Rakendus ei pea kohalikku järjekorda, ei vali ise järgmist tööd ega käivita ressursimahukat tööd ilma ORDS-i claim'ita. ORDS ei täida töö sisu: ASR-i ja slaiditöötluse protsessi, failid, logid ja artefaktid haldab `ttu_loeng` rakendus.
 

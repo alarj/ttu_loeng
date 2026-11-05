@@ -138,14 +138,21 @@ Koostaja: AI (OpenAI Codex), kasutaja juhiste järgi. Käesoleva dokumendi esime
 - [`src/lecture_notes/cli.py`](../src/lecture_notes/cli.py) — konteineris kasutatava CLI käsud.
 - [`src/lecture_notes/asr_benchmark.py`](../src/lecture_notes/asr_benchmark.py) — ASR-i lukustatud kontrollkomplekti töötlus, kogu loengu ajastatud transkriptsioon, kvaliteedimõõdikud ja ressursimõõtmine.
 - [`src/lecture_notes/slides.py`](../src/lecture_notes/slides.py) — videokaadrite, OCR-i ja PDF-i praegune slaiditöötluse alus.
+- [`src/lecture_notes/web/app.py`](../src/lecture_notes/web/app.py) — FastAPI HTML-marsruudid, Google OAuth, rollikontroll ja allalaadimised.
+- [`src/lecture_notes/web/services.py`](../src/lecture_notes/web/services.py) — HTML-liidese ja tulevase JSON API ühine esituste, ORDS-i registreerimise ning tulemuste teenusekiht.
+- [`src/lecture_notes/web/database.py`](../src/lecture_notes/web/database.py) — Oracle'i ühenduste pool, lühikesed tehingud ja rakenduse hoidla.
+- [`src/lecture_notes/web/ords.py`](../src/lecture_notes/web/ords.py) — ORDS OAuth `client_credentials` klient ja järjekorra API adapter.
+- [`src/lecture_notes/web/worker.py`](../src/lecture_notes/web/worker.py) — püsiva workeri claim'i, protsessi, heartbeat'i, lõpetamise ja taastumise ahel.
 - [`compose.yaml`](../compose.yaml) ja [`Dockerfile`](../Dockerfile) — importeri konteinerpakendus.
+- [`Dockerfile.web`](../Dockerfile.web) ja [`Dockerfile.worker`](../Dockerfile.worker) — püsiva FastAPI teenuse ning ühendatud ASR-/slaidiworkeri konteinerpakendused.
 - [`Dockerfile.asr`](../Dockerfile.asr) — Faster-Whisperi sõltuvustega eraldatud ASR-workeri konteinerpakendus.
 - [`Dockerfile.slides`](../Dockerfile.slides) — FFmpegi, Tesseracti ja PyMuPDF-iga slaiditöötluse konteinerpakendus.
 - [`benchmarks/datasets/lecture3_v1.json`](../benchmarks/datasets/lecture3_v1.json) — loengu 3 lukustatud ASR-kontrollkomplekti masinloetav kirjeldus.
 - [`hotwords/icm0032/l03.txt`](../hotwords/icm0032/l03.txt) ja [`hotwords/icm0032/l08-1.txt`](../hotwords/icm0032/l08-1.txt) — varasemates katsetes kasutatud loengupõhised erialaterminid; [`hotwords/icm0032/l08-1-cobit.txt`](../hotwords/icm0032/l08-1-cobit.txt) — loengu 8.1 kontrollkatse üksiku `COBIT` hotword'iga.
-- [`.env.example`](../.env.example) — runtime’i, konteineri kasutaja, kodukataloogi ja Oracle'i ühenduse saladusteta seadistusmall.
+- [`.env.example`](../.env.example) — runtime’i, konteineri kasutaja, Google OAuthi, Oracle'i ühenduse, ORDS-i OAuth-kliendi ja intervallide saladusteta seadistusmall.
 - [`tests/test_echo360.py`](../tests/test_echo360.py) — olekuloogika võrguvabad kontrollid.
 - [`tests/test_asr_benchmark.py`](../tests/test_asr_benchmark.py) — ASR-i kvaliteedimõõdikute ja videoallika valiku võrguvabad kontrollid.
+- [`tests/test_web_app.py`](../tests/test_web_app.py), [`tests/test_web_services.py`](../tests/test_web_services.py), [`tests/test_ords_client.py`](../tests/test_ords_client.py) ja [`tests/test_worker.py`](../tests/test_worker.py) — ligipääsu, teenusekihi, ORDS-kliendi ja püsiva workeri unit-testid.
 
 Registrit tuleb täiendada kohe, kui projektile lisandub README, andmeskeem, API leping, konteinerite kirjeldus, hindamisandmete register või muu asjakohane allikas. Registrisse kuulumine ei anna allikale teiste ees ülimuslikkust.
 

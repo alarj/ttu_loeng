@@ -2,7 +2,7 @@
 
 ## 1. Dokumendi päritolu
 
-Koostaja: AI (OpenAI Codex) kasutaja kinnitatud MVP2 lähteülesande, projekti olemasoleva koodi, kontrollitud runtime-artefaktide ja 3.11.2026 kinnitatud MVP3 arhitektuuriotsuste põhjal. Dokument asendab varasema konspektirakenduse tehnilise spetsifikatsiooni; vana versioon säilib Git-ajaloos märgendi `ver0.1` all ja MVP2 seis märgendi `ver0.2` all.
+Koostaja: AI (OpenAI Codex) kasutaja kinnitatud MVP2 lähteülesande, projekti olemasoleva koodi, kontrollitud runtime-artefaktide ja 3.–4.11.2026 kinnitatud MVP3 arhitektuuri- ning ligipääsuotsuste põhjal. Dokument asendab varasema konspektirakenduse tehnilise spetsifikatsiooni; vana versioon säilib Git-ajaloos märgendi `ver0.1` all ja MVP2 seis märgendi `ver0.2` all.
 
 ## 2. Sisukord
 
@@ -28,7 +28,7 @@ Koostaja: AI (OpenAI Codex) kasutaja kinnitatud MVP2 lähteülesande, projekti o
 
 Käesolev dokument kirjeldab faili [`lahteylesanne.md`](lahteylesanne.md) nõuete tehnilist teostust. Slaiditöötluse detailid on failis [`slaiditootlus.md`](slaiditootlus.md) ning MVP3 veebirakenduse ja ORDS-i täpne leping failis [`mvp3_veeb_ja_ords.md`](mvp3_veeb_ja_ords.md).
 
-Dokument kirjeldab olemasolevat MVP2 teostust ja MVP3 kinnitatud arhitektuuri. Nginx, DNS ja TLS kuuluvad MVP3 ulatusse, kuid nende tegelik muutmine toimub eraldi pärast esimese koodiversiooni valmimist. Dokument ei anna luba andmebaasi ega kõrvalprojektide andmete muutmiseks; sellised muudatused vajavad eraldi kasutaja kinnitust faili [`agents.md`](agents.md) järgi.
+Dokument kirjeldab olemasolevat MVP2 teostust ja MVP3 kinnitatud arhitektuuri. DNS-kirje, nginxi HTTP→HTTPS suunamine, `ttu-loeng.fun-o.eu` nime sisaldav ühine TLS-sertifikaat ja HTTPS-pöördproksi töötavale veebikonteinerile on seadistatud. Dokument ei anna luba andmebaasi ega kõrvalprojektide andmete muutmiseks; sellised muudatused vajavad eraldi kasutaja kinnitust faili [`agents.md`](agents.md) järgi.
 
 ## 4. Kontrollitud lähteolukord
 
@@ -431,7 +431,7 @@ Loengu 8.1 kontroll määras praegused tööväärtused. Enne nende üldiseks so
 5. milline videoresolutsioon sobib tuvastuseks ja milline lõpliku pildi allikaks;
 6. kuidas märgitakse osaliselt kattuv või erineva versiooniga slaidifail;
 7. MVP2 käsurea lõplik leping;
-8. kasutajaliidese autentimise viis.
+8. järgmises etapis lisatava masinliidese autentimise viis.
 
 Neid otsuseid ei tehta dokumenteerimata oletuse ega ühe näite põhjal.
 
@@ -441,6 +441,20 @@ MVP3 lisab vähemalt kaks püsivat konteinerit: FastAPI veebiteenuse ja ühe pü
 
 Ressursimahukad tööliigid on ORDS-is `application_code=ttu_loeng` all `asr` ja `slides`. Sama loengu slaiditöö `previous_job_id` viitab selle loengu ASR-i ORDS-i `job_id` väärtusele. ORDS on ainus järjekorra ja käivitamisloa autoriteet; rakendus ei pea kohalikku järjekorda. Rakenduse püsiv olek seob loengu, kasutaja slaidifaili ja ORDS-i tööde ID-d, kuid seda ei kasutata järgmise töö valimiseks.
 
-Kasutaja saab korraga valida mitu loengut ja siduda iga loenguga oma valikulise slaidifaili. Veebiliides kuvab iga loengu ASR-i, sõltuva slaiditöö ja valmis tulemuse. ORDS-i olek on järjekorra ja täitmise tõeallikas; rakenduse artefaktide olemasolu ja sisemised vead on rakenduse tõeallikas.
+ORDS-i järjekorra API autentimine kasutab OAuth `client_credentials` voogu. `ttu_loeng` rakendusel on oma OAuth-klient; kliendi ID ja saladus tulevad `.env` failist ning access tokenit hoitakse ainult mälus. Kõik järjekorra API kutsed kasutavad Bearer-tokenit.
 
-Avalik aadress on `https://ttu-loeng.fun-o.eu`. Rakendus kasutab olemasolevat nginx veebiserverit, kuid pöördproksi, DNS-i ja TLS-i seadistus tehakse MVP3 hilisemas etapis pärast esimese koodiversiooni valmimist. Täielik leping ja etapistus on failis [`mvp3_veeb_ja_ords.md`](mvp3_veeb_ja_ords.md).
+Kasutaja saab korraga valida mitu loengut ja siduda iga loenguga oma valikulise slaidifaili. Veebiliides kuvab iga loengu ASR-i, sõltuva slaiditöö ja valmis tulemuse. Iga taustatöö olekut näidatakse ühe ORDS-i olekumärgisega; dubleeriva kohaliku tulemuse teksti asemel kuvatakse `BACKGROUND_OPERATIONS.LOCAL_STARTED_AT` ja `LOCAL_COMPLETED_AT`. UTC-ajad edastatakse ISO 8601 kujul brauserile, mis teisendab need oma ajavööndisse ja kuvab 24-tunnisel kujul `dd.mm.yyyy hh:mm:ss`. ORDS-i olek on järjekorra ja täitmise tõeallikas; rakenduse artefaktide olemasolu ja sisemised vead on rakenduse tõeallikas.
+
+Brauserikasutaja autentimine toimub Google Identity Services ID-tokeniga samal põhimõttel nagu serveri `fun-o.eu` ja `haldus` rakendustes. Backend kontrollib tokenit Google'i `tokeninfo` teenuse kaudu, võrdleb `aud` väärtust `GOOGLE_CLIENT_ID` seadistusega ning nõuab kinnitatud e-posti aadressi. Esmakordsel edukal sisselogimisel luuakse `USER` rolliga `APP_USERS` kirje; rakendus ei halda kohalikke paroole. Aegunud või puuduva sessiooniga kaitstud HTML-päring suunatakse avalehe puhtale Google'i sisselogimisvaatele. `USER` näeb ja laadib alla kõigi aktiivsete tööde tulemusi, kuid uusi töid ja avalikke jagamislinke haldab ainult `ADMIN`. Rolli `ADMIN` määramine toimub otse andmebaasis. Avalikku jagamist pakutakse ja `LECTURE_PROCESSINGS.public_id` saab väärtustada alles pärast slaididega ühendatud `slides/transcript_with_slides.md` valmimist. Sisselogitud ja anonüümne allalaadimine väljastavad sama ZIP-paketi ega lange tagasi ASR-i toortranskriptile; anonüümne kasutaja ei näe tööde nimekirja. ZIP luuakse päringu ajal, selle juurkataloogi ja Markdown-faili nimi tuletatakse failisüsteemi jaoks turvaliseks tehtud loengu nimest ning `images/` sisaldab kõiki Markdownis viidatud slaidipilte. Paketti ei säilitata püsiva artefaktina.
+
+Markdown-vaates teisendatakse transkriptsioonisegmentide ajavahemikud videolinkideks. Link juhib ühe modali ülaosas paikneva HTML5-videopleieri vastava segmendi algusajale; segmendi lõppaeg ei peata videot. Videoallikaks valitakse Echo360 väikseim esitusvariant. Kuna Echo meediaallikas nõuab avaliku kursusesessiooni küpsist, ei anta meedia URL-i brauserile otse. Autenditud videoendpoint vahendab brauseri ühte baitvahemikku kirjeldava `Range`-päise Echo360-le ja tagastab `206 Partial Content` vastuse voona. Videot ei kirjutata runtime-kataloogi ega puhverdata rakenduses tervikuna.
+
+Sisselogitud kasutaja avaleht rühmitab loengud `SUBMISSIONS.ECHO_CANONICAL_SECTION_ID` järgi kursusteks. Kursuse kuvatav nimi pärineb `SUBMISSIONS.COURSE_TITLE` väljast ning kursused järjestatakse selle järgi. Valitud kursuse loengud järjestatakse `LECTURE_PROCESSINGS.LECTURE_TITLE` järgi ja kuvatakse kompaktses nimekirjas. Nii loengute nimekirjas kui detailvaates kuvatakse andmebaasikirje lisamisaja asemel Echo360-st saadud tegelik loengu toimumisaeg `LECTURE_PROCESSINGS.LECTURE_START_AT`, et sama pealkirjaga loenguid saaks eristada. Administraator võib detailvaatest soft delete'iga sulgeda konkreetse loengutöötluse alles pärast loengu nime kuvavas modalis `Jah` valimist; see ei sulge kursuse teisi loenguid ega submission'it.
+
+Loengute lisamise leht pakub olemasolevaid aktiivseid kursusi nime järgi ning eraldi välja uue Echo360 `/public` URL-i sisestamiseks. Dropdowni väärtus on kanoonilise sektsiooni ID, mitte URL. Backend leiab valitud kursuse viimase aktiivse submission'i salvestatud URL-i. Mõlemal sisendil on eraldi „Kuva loengud” nupp, mis on aktiivne ainult vastava valiku või sisendi olemasolul.
+
+FastAPI HTML-marsruudid kasutavad eraldi teenusekihti. Järgmise etapi JSON API peab kasutama samu teenuseid, et tööde loomise, õiguste, ORDS-i registreerimise ja tulemuste leidmise reeglid ei dubleeruks. Masinliidese autentimisviis ei kuulu käesolevasse etappi.
+
+ORDS-i claim'i, heartbeat'i ja OAuth-tokeni uuendamise intervallid ning kasutajaliidese olekuvärskendus tulevad `.env` konfiguratsioonist. Vaikeväärtused on vastavalt 300, 300, 60 ja 30 sekundit.
+
+Avalik aadress on `https://ttu-loeng.fun-o.eu`. DNS-kirje, nginxi HTTP→HTTPS suunamine, nime sisaldav ühine TLS-sertifikaat ja HTTPS-pöördproksi `ttu-loeng-web:8000` konteinerile on seadistatud. Täielik leping ja etapistus on failis [`mvp3_veeb_ja_ords.md`](mvp3_veeb_ja_ords.md).

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ lecture.lecture_title }} – {{ t("app_name") }}{% endblock %}
+{% block header_actions %}
+  {% if user.is_admin %}<a class="button-link secondary-button compact-view header-button" href="/submissions/new">{{ t("new_submission") }}</a>{% endif %}
+  <a class="button-link secondary-button compact-view header-button" href="/courses/{{ lecture.echo_canonical_section_id }}">← {{ t("back") }}</a>
+{% endblock %}
+{% block content %}
+<div class="lecture-detail" data-auto-refresh="true">
+  <section class="card detail-card">
+    <div class="detail-heading">
+      <div class="detail-title">
+        <p class="eyebrow">{{ lecture.course_title or t("course") }}</p>
+        <h2>{{ lecture.lecture_title or t("lecture") }}</h2>
+        {% if lecture.lecture_start_at %}<span class="detail-created"><time class="local-time" datetime="{{ utc_iso(lecture.lecture_start_at) }}">{{ utc_iso(lecture.lecture_start_at) }}</time></span>{% endif %}
+      </div>
+      <div class="detail-actions">
+        {% if user.is_admin %}<button id="openDeleteLectureDialog" class="secondary-button compact-view" type="button">{{ t("delete") }}</button>{% endif %}
+        {% if result_ready %}<button id="openTranscriptViewer" class="compact-view" type="button">{{ t("view") }}</button>{% endif %}
+        {% if download_ready %}
+        <a class="button-link secondary-button compact-view icon-button" href="/lectures/{{ lecture.lecture_processing_id }}/download" title="{{ t('download') }}" aria-label="{{ t('download') }}">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg>
+        </a>
+        {% endif %}
+        <a class="button-link secondary-button compact-view icon-button" href="{{ echo_url }}" target="_blank" rel="noopener noreferrer" title="{{ t('open_echo') }}" aria-label="{{ t('open_echo') }}">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 5h5v5m0-5-9 9M19 14v5H5V5h5"/></svg>
+        </a>
+      </div>
+    </div>
+    {% if not result_ready %}<p class="muted detail-message">{{ t("not_ready") }}</p>{% endif %}
+  </section>
+
+  <section class="card detail-card">
+    <h2>{{ t("operations") }}</h2>
+    <div class="detail-operation-list">
+      {% for operation in lecture.operations %}
+      <article class="detail-operation-row">
+        <strong>{{ operation.operation_type }}</strong>
+        <span class="status-badge compact-status status-{{ operation.status|lower }}">{{ operation.status }}</span>
+        <span class="operation-times">
+          {% if operation.local_started_at %}<time class="browser-date-time" datetime="{{ utc_iso(operation.local_started_at) }}">{{ utc_iso(operation.local_started_at) }}</time> -{% else %}-{% endif %}
+          {% if operation.local_completed_at %} <time class="browser-date-time" datetime="{{ utc_iso(operation.local_completed_at) }}">{{ utc_iso(operation.local_completed_at) }}</time>{% endif %}
+        </span>
+        {% if operation.registration_error_message %}<span class="error-text">{{ operation.registration_error_message }}</span>{% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if sharing_ready or lecture.public_id %}
+  <section class="card detail-card">
+    <h2>{{ t("sharing") }}</h2>
+    {% if lecture.public_id %}
+    <p>{{ t("sharing_enabled") }}</p>
+    <p class="public-link"><a href="{{ base_url }}/public/{{ lecture.public_id }}/download">{{ base_url }}/public/{{ lecture.public_id }}/download</a></p>
+    {% else %}<p>{{ t("sharing_disabled") }}</p>{% endif %}
+    {% if user.is_admin and (lecture.public_id or sharing_ready) %}
+    <form method="post" action="/lectures/{{ lecture.lecture_processing_id }}/sharing">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="enabled" value="{{ '0' if lecture.public_id else '1' }}">
+      <button type="submit" class="secondary-button compact-view">{{ t("disable_sharing") if lecture.public_id else t("enable_sharing") }}</button>
+    </form>
+    {% endif %}
+  </section>
+  {% endif %}
+
+</div>
+
+{% if user.is_admin %}
+<dialog id="deleteLectureDialog" class="confirm-dialog" aria-labelledby="deleteLectureDialogTitle">
+  <form method="post" action="/lectures/{{ lecture.lecture_processing_id }}/delete">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="confirmed" value="1">
+    <p id="deleteLectureDialogTitle">{{ t("delete_lecture_confirm") }} „{{ lecture.lecture_title or t("lecture") }}“?</p>
+    <div class="confirm-dialog-actions">
+      <button id="cancelDeleteLecture" class="secondary-button compact-view" type="button">{{ t("no") }}</button>
+      <button class="secondary-button compact-view" type="submit">{{ t("yes") }}</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
+
+{% if result_html %}
+<dialog id="transcriptViewer" class="transcript-dialog" aria-labelledby="transcriptViewerTitle" data-video-url="/lectures/{{ lecture.lecture_processing_id }}/video">
+  <div class="transcript-dialog-head">
+    <h2 id="transcriptViewerTitle">{{ lecture.lecture_title or t("lecture") }}</h2>
+    <button id="closeTranscriptViewer" class="secondary-button compact-view" type="button">{{ t("close") }}</button>
+  </div>
+  <div id="transcriptVideoContainer" class="transcript-video" hidden>
+    <video id="transcriptVideo" controls playsinline preload="metadata"></video>
+  </div>
+  <div class="markdown-viewer">{{ result_html|safe }}</div>
+</dialog>
+{% endif %}
+{% endblock %}
+

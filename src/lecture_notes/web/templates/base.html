@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="et">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ t("app_name") }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}?v={{ static_version }}">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="{{ url_for('static', path='/app.js') }}?v={{ static_version }}" defer></script>
+</head>
+<body data-poll-interval="{{ poll_interval_seconds }}">
+  <div class="wrap">
+    <header class="site-header">
+      <div>
+        <p class="eyebrow">{{ t("brand") }}</p>
+        <h1><a href="/">{{ t("app_name") }}</a></h1>
+        <p class="lead">{{ t("app_lead") }}</p>
+      </div>
+      {% if user %}
+      <div class="user-menu">
+        <div class="user-session">
+          <span>{{ t("signed_in_as") }} <strong>{{ user.display_name }}</strong></span>
+          <form method="post" action="/auth/logout">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="secondary-button compact-view header-button" type="submit">{{ t("sign_out") }}</button>
+          </form>
+        </div>
+        <div class="header-actions">{% block header_actions %}{% endblock %}</div>
+      </div>
+      {% endif %}
+    </header>
+    <main>{% block content %}{% endblock %}</main>
+    <footer class="site-footer">{{ t("footer_notice") }}</footer>
+  </div>
+</body>
+</html>
+

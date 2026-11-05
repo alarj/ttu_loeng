@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ course.course_title }} – {{ t("app_name") }}{% endblock %}
+{% block header_actions %}
+  {% if user.is_admin %}<a class="button-link secondary-button compact-view header-button" href="/submissions/new">{{ t("new_submission") }}</a>{% endif %}
+  <a class="button-link secondary-button compact-view header-button" href="/">← {{ t("back") }}</a>
+{% endblock %}
+{% block content %}
+<section class="card lecture-list-card" data-auto-refresh="true">
+  <div class="course-heading">
+    <h2>{{ course.course_title }}</h2>
+  </div>
+  {% if lectures %}
+  <div class="compact-lecture-list">
+    {% for lecture in lectures %}
+    <article class="compact-lecture-row">
+      <div class="compact-lecture-main">
+        <h3>
+          {{ lecture.lecture_title or t("lecture") }}
+          {% if lecture.lecture_start_at %}<time class="lecture-date" datetime="{{ utc_iso(lecture.lecture_start_at) }}">({{ date_only(lecture.lecture_start_at) }})</time>{% endif %}
+        </h3>
+        <div class="compact-lecture-meta">
+          {% for operation in lecture.operations %}
+          <span class="status-badge compact-status status-{{ operation.status|lower }}">{{ operation.operation_type }}: {{ operation.status }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="compact-lecture-actions">
+        <a class="button-link secondary-button compact-view" href="/lectures/{{ lecture.lecture_processing_id }}">{{ t("view") }}</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="history-empty">{{ t("no_jobs") }}</p>
+  {% endif %}
+</section>
+{% endblock %}

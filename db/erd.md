@@ -2,7 +2,7 @@
 
 ## 1. Dokumendi päritolu
 
-Koostaja: AI (OpenAI Codex) kasutaja 3.11.2026 kinnitatud MVP3 arhitektuuri, projekti olemasoleva töötlusmootori ning serveriülese ORDS-i järjekorra lepingu põhjal.
+Koostaja: AI (OpenAI Codex) kasutaja 3.–4.11.2026 kinnitatud MVP3 arhitektuuri, ligipääsureeglite, projekti olemasoleva töötlusmootori ning serveriülese ORDS-i järjekorra lepingu põhjal.
 
 ## 2. Sisukord
 
@@ -159,7 +159,7 @@ Providerineutraalne rakenduse kasutaja. Tabel ei määra, kas hilisem autentimin
 | Veerg | Oracle'i tüüp | Null | Reegel / tähendus |
 |---|---|---:|---|
 | `submission_id` | `NUMBER(19)` | ei | Tehniline primaarvõti sequence'ist |
-| `public_id` | `VARCHAR2(36 CHAR)` | ei | Avalik UUID, unikaalne |
+| `public_id` | `VARCHAR2(36 CHAR)` | ei | Submission'i päringu UUID; sama vormi kordusesitamise võti, unikaalne |
 | `user_id` | `NUMBER(19)` | jah | Viide `APP_USERS` reale; jääb nullable'iks kuni autentimisviis kinnitatakse |
 | `echo_public_url` | `VARCHAR2(2000 CHAR)` | ei | Kasutaja sisestatud valideeritud Echo360 `/public` URL |
 | `echo_public_section_id` | `VARCHAR2(36 CHAR)` | ei | Avaliku sektsiooni UUID |
@@ -180,7 +180,7 @@ Providerineutraalne rakenduse kasutaja. Tabel ei määra, kas hilisem autentimin
 | `lecture_processing_id` | `NUMBER(19)` | ei | Tehniline primaarvõti sequence'ist |
 | `public_id` | `VARCHAR2(36 CHAR)` | jah | Avaliku read-only jagamislingi UUID, unikaalne; `NULL` tähendab, et loengut ei saa avaliku lingiga jagada |
 | `submission_id` | `NUMBER(19)` | ei | Viide `SUBMISSIONS` reale |
-| `echo_lesson_id` | `VARCHAR2(36 CHAR)` | ei | Echo360 lesson UUID |
+| `echo_lesson_id` | `VARCHAR2(1000 CHAR)` | ei | Echo360 loengu identifikaator; võib olla UUID või Echo360 liit-ID |
 | `lecture_title` | `VARCHAR2(500 CHAR)` | jah | Loengu nimi lahendamise hetkel |
 | `lecture_start_at` | `TIMESTAMP` | jah | Echo360 loengu algusaeg UTC-s |
 | `duration_seconds` | `NUMBER(12,3)` | jah | Salvestise kestus sekundites |
@@ -242,7 +242,7 @@ Rakenduse üks ASR-i või slaiditöötluse toiming ja selle seos ORDS-i tööga.
 1. Üks `SUBMISSIONS` rida sisaldab vähemalt üht `LECTURE_PROCESSINGS` rida.
 2. `APP_USERS.enabled` väärtus on `0` või `1`; see on ainus SQL-i `CHECK`-piirang.
 3. `(identity_provider, external_subject)` on unikaalne.
-4. `LECTURE_PROCESSINGS.public_id` on nullable ja unikaalne. Väärtustatud UUID lubab avaliku read-only transkriptilingi; `NULL` keelab avaliku lingiga jagamise.
+4. `LECTURE_PROCESSINGS.public_id` on nullable ja unikaalne. Väärtustatud UUID lubab avaliku read-only transkriptilingi; `NULL` keelab avaliku lingiga jagamise. Rakenduse teenusekiht lubab väärtuse määrata alles pärast slaididega ühendatud Markdowni valmimist.
 5. `(submission_id, echo_lesson_id)` on unikaalne: sama loengut ei lisata samasse esitamise gruppi kaks korda.
 6. Ühel loengutöötlusel võib olla mitu ajaloolist üleslaadimist, kuid korraga kõige rohkem üks aktiivne `SLIDES` fail. See reegel jõustatakse funktsioonipõhise unikaalse indeksiga, mis arvestab `end_date IS NULL` tingimust.
 7. `(lecture_processing_id, operation_type, attempt_number)` on unikaalne.
@@ -276,13 +276,13 @@ Need väljad ei anna tööle käivitamisõigust. Worker käivitab toimingu ainul
 
 ## 9. Kasutajad ja ligipääs
 
-`APP_USERS` hoiab rakenduse kasutaja identiteeti ja rolli, kuid ei hoia parooli. `external_subject` seotakse hiljem kinnitatava autentimislahenduse stabiilse subjektiga. Kuni autentimisviis pole kinnitatud, võib süsteem töötada ühe eelloodud kasutajaga ja `SUBMISSIONS.user_id` on tehniliselt nullable.
+`APP_USERS` hoiab Google OAuthiga sisse loginud rakenduse kasutaja identiteeti ja rolli, kuid ei hoia parooli. `identity_provider` väärtus on `GOOGLE` ning `external_subject` sisaldab Google'i stabiilset `sub` tunnust. Esmakordsel sisselogimisel luuakse lubatud `USER` rolliga kasutaja; `ADMIN` roll määratakse otse andmebaasis.
 
-Tavakasutaja näeb enda `SUBMISSIONS` kirjeid ning nende loenguid, toiminguid ja tulemusi. `ADMIN` võib näha kõiki kirjeid. Ligipääsureegel jõustatakse FastAPI teenusekihis; Oracle'i otseühendus ei ole brauserile avalik.
+Sisselogitud `USER` näeb kõiki aktiivseid loengutöid ja võib nende valmis Markdown-tulemusi alla laadida, kuid ei või uusi töid esitada, avalikke linke muuta ega loenguid sulgeda. `ADMIN` näeb kõiki kirjeid, esitab töid, haldab avalikke linke ja võib konkreetse loengutöötluse soft delete'iga sulgeda. Ligipääsureegel jõustatakse FastAPI teenusekihis; Oracle'i otseühendus ei ole brauserile avalik.
 
-Rakendus kasutab üht Oracle'i skeemikasutajat ja `python-oracledb` ühenduste pooli. ORDS-i ühine Basic-mandaat on eraldi saladus ning seda ei kasutata rakenduse skeemi otseühenduseks.
+Rakendus kasutab üht Oracle'i skeemikasutajat ja `python-oracledb` ühenduste pooli. ORDS-i järjekorra API kasutab rakendusepõhist OAuth `client_credentials` klienti; kliendi ID ja saladus on rakenduse `.env` failis ning neid ei kasutata rakenduse skeemi otseühenduseks. OAuthi access tokenit hoitakse ainult rakenduse mälus.
 
-`LECTURE_PROCESSINGS.public_id` on eraldi avaliku read-only jagamise tunnus. Kui väärtus on `NULL`, ei ole loeng avaliku lingiga kättesaadav. Väärtustatud UUID korral võib FastAPI avaldada ainult lugemiseks mõeldud transkripti aadressil `/transcripts/<public_id>`; kirjutamistoiminguid see tunnus ei luba.
+`LECTURE_PROCESSINGS.public_id` on eraldi avaliku read-only jagamise tunnus. Kui väärtus on `NULL`, ei ole loeng avaliku lingiga kättesaadav. Teenusekiht lubab väärtuse määrata ainult siis, kui `slides/transcript_with_slides.md` on olemas. Väärtustatud UUID korral avaldab FastAPI selle slaididega ühendatud Markdown-tulemuse aadressil `/public/<public_id>/download`; aadress ei väljasta toortranskripti, ei kuva tööde nimekirja ega luba kirjutamistoiminguid.
 
 ## 10. Aeg, kustutamine ja audit
 
@@ -308,12 +308,13 @@ Kõigil tabelitel on lisaks domeeniveergudele järgmised ühised veerud:
 Aktiivne kirje vastab tingimusele:
 
 ```sql
-end_date IS NULL OR end_date > SYSDATE
+end_date IS NULL
 ```
 
 Suletud kirjed ei tohi tavavoogudes ega tavakasutaja päringutes nähtavale jääda. Füüsilist kustutamist ei kasutata; kirje sulgemisel määratakse `end_date` ja `last_updated`.
 
 - Loengutöötlusi ja toiminguid tavavoo kaudu füüsiliselt ei kustutata.
+- Administraatori loengu kustutamistoiming sulgeb ainult valitud `LECTURE_PROCESSINGS` rea, määrates selle `end_date` ja `last_updated`; sama submission'i teised loengud ja submission ise jäävad aktiivseks.
 - Sisendfaili eemaldamine märgitakse vastava `UPLOADS` kirje `end_date` väärtusega.
 - Kasutaja blokeerimine muudab `APP_USERS.enabled` väärtuseks `0`; ajaloolised seosed säilivad.
 - E-posti või kuvatava nime muutmine ei muuda varasemate tööde omanikku.
