@@ -137,21 +137,29 @@ Slaidide olemasolu ei otsustata üksnes videofaili või Echo slaidiikooni olemas
 
 Slaidid võetakse vaikimisi videost. Eraldi slaidifaili kasutatakse kvaliteetsema pildi ja teksti allikana ainult pärast videos nähtud slaididega vastavuse kontrollimist. Täpne töövoog on failis [`slaiditootlus.md`](slaiditootlus.md).
 
-Video esmane slaidikontroll kasutab vaikimisi 20-sekundilise vahega kontrollkaadreid. Kontrollkaadrite võrdlus põhineb väikese halltoonides pildi digitaalsel sõrmejäljel, mitte kogu kaadri OCR-tekstil. Kui kahe järjestikuse põhikaadri vahel on pilt muutunud, otsib rakendus slaidi täpsema vahetusaja ainult selle 20-sekundilise vahemiku seest kahe-sekundilise sammuga. Mõlemad ajavahemikud peavad olema konfiguratsioonis muudetavad.
+Video esmane slaidikontroll kasutab vaikimisi 20-sekundilise vahega kontrollkaadreid. Kontrollkaadrite võrdlus põhineb 160 × 90 RGB-punktist koosneval pildi digitaalsel sõrmejäljel, mitte kogu kaadri OCR-tekstil. Kui kahe järjestikuse põhikaadri vahel on pilt muutunud, otsib rakendus slaidi täpsema vahetusaja ainult selle 20-sekundilise vahemiku seest kahe-sekundilise sammuga. Mõlemad ajavahemikud peavad olema konfiguratsioonis muudetavad.
 
-OCR käivitatakse pärast slaidikandidaadi leidmist eelkõige pealkirjaalal. Kogu slaidi OCR-i kasutatakse ainult siis, kui pealkiri, pildisarnasus ja slaidide järjekord ei võimalda eraldi slaidifailiga vastavust piisavalt kontrollida.
+OCR käivitatakse pärast slaidikandidaadi leidmist eelkõige pealkirjaalal. Kui kasutaja on andnud eraldi slaidifaili, loetakse stabiilselt videokaadrilt lisaks kogu nähtav tekst, et võrrelda seda PDF-i tekstikihiga. Kogu kaadri OCR-i kasutatakse ainult vastavuse kontrolliks ning selle kontrollimata tulemust ei esitata transkriptis slaidi pealkirjana.
 
 Teadaolev piirang on, et täielikult ühe 20-sekundilise põhivahemiku sisse jääv väga lühike slaid või sama slaidi juurde naasev ajutine vahepilt võib jääda leidmata. Piirang peab olema dokumenteeritud töö konfiguratsioonis ja tulemuses.
 
 ### 9.4. Slaidiviidete lisamine
 
 - Iga tuvastatud slaid saab järjestikuse numbri.
-- Võimaluse korral lisatakse slaidi pealkiri.
+- Slaidi pealkiri lisatakse ainult kinnitatud eraldi slaidifaili vastest; kontrollimata video-OCR-i teksti pealkirjana ei kuvata.
 - Slaidi ligikaudne ilmumisaeg võetakse videost.
 - Slaidiviide paigutatakse ajaliselt lähima transkriptsioonisegmendi piiri juurde.
 - Transkriptsioonisegmenti slaidiviite tõttu ei lõhuta.
 - Slaidi korduv näitamine võib viidata samale slaidile uue ilmumisajaga.
 - Kui videos slaide pole, valmib transkript ilma slaidiviideteta.
+
+### 9.5. Slaidide uuesti sidumine
+
+Pärast eduka ASR-i valmimist peab kasutaja saama käivitada samale loengule uue slaidide sidumise ilma kõnetuvastust uuesti käivitamata. Uus sidumine kasutab olemasolevat ajatemplitega transkripti, sama loengu videot ja sama aktiivset kasutaja antud slaidifaili, kui see on olemas.
+
+Uuesti sidumisel saab kasutaja valida slaidimuutuse tuvastamise tundlikkuse astme `−3`, `−2`, `−1`, `0`, `+1`, `+2` või `+3`. Kasutajaliides ei kuva tehnilist muutuselävendit. Positiivne aste tähendab tundlikumat tuvastamist ja negatiivne aste vähem tundlikku tuvastamist. Aste `0` kasutab vaikekonfiguratsiooni.
+
+Iga uuesti sidumine loob uue slaiditöötluse tulemuse versiooni. Varasemat tulemust ei kirjutata üle ning kasutajaliides peab võimaldama olemasolevaid versioone eraldi vaadata ja alla laadida.
 
 ## 10. Väljundid
 
@@ -175,6 +183,7 @@ Rakendus säilitab:
 - algse ajatemplitega transkriptsiooni masinloetaval kujul;
 - slaidide olemasolu kontrolli tulemuse;
 - slaidide järjekorra, pealkirjad ja ajastuse;
+- iga slaidide sidumise versiooni kasutaja valitud tundlikkusastme, tegeliku muutuselävendi, konfiguratsiooni ja kestuse;
 - püsivad slaidipildid;
 - valikulise slaidifaili teisendamise ja vastavuse kontrolli tulemuse;
 - mudelite, tööriistade ja konfiguratsiooni versioonid;
@@ -265,6 +274,8 @@ MVP3 peab lisama olemasolevale töötlusmootorile:
 - püsiva konteineriseeritud workeri, mis täidab ORDS-ist claim'itud `asr` ja `slides` töid;
 - ORDS-i rakenduskoodi `ttu_loeng`;
 - sama loengu slaiditöö sõltuvuse ASR-ist `previous_job_id` kaudu.
+- administraatori võimaluse käivitada edukale ASR-ile uus slaiditöötlus olemasolevat ASR-i kordamata ning valida selleks tundlikkusaste `−3…+3`;
+- slaiditöötluse versioonide eraldi säilitamise ja kuvamise ilma varasemat tulemust üle kirjutamata;
 - serveri teiste rakendustega ühtse Google Identity Services ID-tokeniga sisselogimise, mille esimene edukas sisselogimine loob `USER` rolliga rakenduse kasutaja;
 - ligipääsureegli, mille järgi `USER` näeb ja laadib alla kõigi tööde valmis tulemusi ning `ADMIN` võib lisaks uusi töid esitada ja avalikke linke hallata;
 - administraatori võimaluse sulgeda konkreetne loengutöötlus soft delete'iga ilma sama kursuse teisi loenguid või submission'it sulgemata;

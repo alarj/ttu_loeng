@@ -31,6 +31,8 @@ Valmis ja kontrollitud on:
 - eraldi slaidifaili videoga sobitamine;
 - slaidiviidete lisamine transkripti segmendipiiridele ja ühendatud Markdown-väljund.
 
+Eraldi slaidifaili olemasolul võrreldakse stabiilse videokaadri kogu tuvastatud teksti PDF-i tekstikihiga. Transkriptis kuvatakse slaidi pealkiri ainult kinnitatud PDF-vastest; kontrollimata video-OCR-i teksti pealkirjana ei kasutata.
+
 ICM0032 kontroll-loengu pikkus oli 2 tundi ja 15 minutit. Täistranskriptsioon valmis 1 tunni ja 40 minutiga ning sisaldas 447 segmenti ja 15 064 sõna. Kasutaja pistelise kuulamiskontrolli järgi oli tulemus hästi loetav ja sisult täpne.
 
 Slaiditöötluse `video-slides-v2` tervikahel on teostatud ja loengu 8.1 põhjal kontrollitud. Töövoog kasutab 20-sekundilist põhikontrolli, pildisõrmejälgede võrdlust ning ainult muutunud põhivahemiku kahe-sekundilist täpsustust. Lõplik kontroll leidis videost viis slaidi ja sidus kõik viis kasutaja PPTX-ist loodud PDF-i vastava staatilise leheküljega; ülemineku- ja animatsioonivaheolekud ei tekitanud lisaslaide. Detailne seis ja algoritm on failis [`docs/slaiditootlus.md`](docs/slaiditootlus.md).

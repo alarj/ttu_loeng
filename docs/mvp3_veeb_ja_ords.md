@@ -132,7 +132,15 @@ Worker leiab `lecture_processing_id` kaudu rakenduse püsivast olekust Echo360 a
 
 Worker kontrollib lisaks enne slaiditöötlust transkripti olemasolu ja sobivust. See on rakenduse sisendi tervikluse kontroll, mitte kohalik järjekorraotsus.
 
-### 6.4. Kordusesitamine ja ajapiir
+### 6.4. Slaidide uuesti sidumine ja tundlikkus
+
+Edukalt valminud ASR-i järel saab `ADMIN` luua samale loengule uue `slides`-toimingu. See ei esita uut ASR-i tööd ega muuda olemasolevat ASR-i tulemust. Uue toimingu `previous_job_id` on sama loengu eduka ASR-i ORDS-i `job_id` ning selle `attempt_number` on eelmisest sama loengu `slides`-toimingust ühe võrra suurem.
+
+Vorm pakub ainult tundlikkusastmeid `−3`, `−2`, `−1`, `0`, `+1`, `+2` ja `+3`. `0` on vaikimisi valik. Positiivne väärtus tähendab tundlikumat ja negatiivne väärtus vähem tundlikku slaidimuutuse tuvastamist; tehnilist lävendit kasutajale ei kuvata. Tegelik lävend tuletatakse `.env`-i `SLIDE_CHANGE_DISTANCE=0.020` väärtusest sammuga `0.003`, nagu on kirjeldatud failis [`tehniline_spek.md`](tehniline_spek.md).
+
+Iga toiming kirjutab oma versioonitud slaidimanifesti, pildid ja ühendatud Markdowni. Detailvaade kuvab kõik lõpetatud versioonid eraldi; uus versioon ei asenda ega kustuta vana tulemust.
+
+### 6.5. Kordusesitamine ja ajapiir
 
 Loengute valimise vorm sisaldab serveris loodud submission'i päringu UUID-d, mida hoitakse `SUBMISSIONS.PUBLIC_ID` veerus. Sama vormi korduv `POST /submissions` tagastab juba loodud submission'i ega loo uusi loengutöötlusi või ORDS-i töid.
 
@@ -152,9 +160,10 @@ Iga ORDS-i HTTP-katse logitakse eraldi. Logikirje sisaldab endpoint'i ilma päri
 8. Worker täidab ainult ORDS-i poolt claim'itud töid.
 9. Kasutajaliides kuvab esmalt `SUBMISSIONS.COURSE_TITLE` järgi järjestatud kursused.
 10. Kursuse valimisel kuvab kasutajaliides selle loengud `LECTURE_PROCESSINGS.LECTURE_TITLE` järgi järjestatud kompaktses ja mobiili- ning tahvlivaatele kohanduvas nimekirjas. Sama nimega loengute eristamiseks kuvatakse nime järel `LECTURE_PROCESSINGS.LECTURE_START_AT` kuupäev. Administraator võib konkreetse loengutöötluse detailvaatest sulgeda soft delete'iga. Kustutamisnupp avab esmalt loengu nimega kinnitusmodali ning kustutamise POST-päring võetakse vastu ainult selgesõnalise `Jah` kinnituse järel.
-11. Loengu kompaktne ja responsiivne detailvaade kuvab iga taustatöö ühe autoriteetse olekumärgise ning selle kõrval rakenduse tegeliku algus- ja lõpuaja. UTC-väärtused teisendatakse brauseri ajavööndisse ja kuvatakse 24-tunnisel kujul `dd.mm.yyyy hh:mm:ss`; lõpetamata töö lõppaeg jääb tühjaks. Vaates saab avada vormindatud Markdown-transkripti koos suurendatavate slaidipiltidega modalis, laadida tervikliku transkripti ZIP-paketi alla ja avada algse Echo360 loengu uuel vahelehel. Transkriptsioonisegmendi ajavahemik on link: selle vajutamisel kuvatakse modali ülaosas väike videopleier ning Echo360 video käivitub segmendi algusajast. Järgmine ajamärgilink kasutab sama pleierit ja hüppab uuele ajale; pausil, video lõppemisel või modali sulgemisel pleier peidetakse.
-12. Brauser küsib videot autentitud rakenduse endpoint'ilt baitvahemikena. Rakendus loob Echo360 avaliku kursusesessiooni, edastab `Range`-päringu Echo videoallikale ja voogedastab vastuse brauserile. Videot ei salvestata kettale ega loeta enne esitamist tervikuna mällu; Echo URL-i ja sessiooniküpsiseid brauserile ei väljastata.
-12. Loengute lisamise vorm kuvab submission'i salvestamise ja ORDS-i registreerimise ajal nähtavat laadimisolekut ning väldib korduvat esitamist. Olemasoleva kursuse ja käsitsi sisestatud URL-i kummalgi real on oma nupp, mis aktiveerub alles vastava väärtuse valimisel või sisestamisel.
+11. Loengu kompaktne ja responsiivne detailvaade kuvab iga taustatöö ühe autoriteetse olekumärgise ning selle kõrval rakenduse tegeliku algus- ja lõpuaja. UTC-väärtused teisendatakse brauseri ajavööndisse ja kuvatakse 24-tunnisel kujul `dd.mm.yyyy hh:mm:ss`; lõpetamata töö lõppaeg jääb tühjaks. Vaates saab avada vormindatud Markdown-transkripti koos suurendatavate slaidipiltidega modalis ja laadida tervikliku transkripti ZIP-paketi alla. Transkriptsioonisegmendi ajavahemik on link: selle vajutamisel kuvatakse modali ülaosas väike videopleier ning Echo360 video käivitub segmendi algusajast. Järgmine ajamärgilink kasutab sama pleierit ja hüppab uuele ajale; pausil, video lõppemisel või modali sulgemisel pleier peidetakse. Eraldi videonupp avab sama Echo videovoo teises modalis. Seal kuvatakse ka algne Echo360 classroom-URL, mille kasutamine nõuab brauseris kehtivat Echo360 sessiooni.
+12. Eduka ASR-i järel saab administraator detailvaatest käivitada uue slaidide sidumise, valida tundlikkusastme `−3…+3` ning näha iga lõpetatud slaidiversiooni eraldi. See tegevus esitab ainult uue sõltuva `slides`-töö.
+13. Brauser küsib videot autentitud rakenduse endpoint'ilt baitvahemikena. Rakendus loob Echo360 avaliku kursusesessiooni, edastab `Range`-päringu Echo videoallikale ja voogedastab vastuse brauserile. Videot ei salvestata kettale ega loeta enne esitamist tervikuna mällu; Echo URL-i ja sessiooniküpsiseid brauserile ei väljastata.
+14. Loengute lisamise vorm kuvab submission'i salvestamise ja ORDS-i registreerimise ajal nähtavat laadimisolekut ning väldib korduvat esitamist. Olemasoleva kursuse ja käsitsi sisestatud URL-i kummalgi real on oma nupp, mis aktiveerub alles vastava väärtuse valimisel või sisestamisel.
 
 Mitme loengu korraga esitamine ei tähenda nende paralleelset töötlemist. Tegeliku järjestuse ja korraga ühe aktiivse ressursimahuka töö reegli jõustab ORDS.
 

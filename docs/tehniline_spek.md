@@ -176,7 +176,7 @@ ASR-worker hangib audio ajutisse `work/` kataloogi, kirjutab enne mudelitööd o
 
 ### 7.4. `CHECKING_SLIDES`
 
-Slaidi-worker kontrollib Echo slaidikirjeid, video olemasolu ja videopildi sisu. Video sisu esmane kontroll kasutab vaikimisi 20-sekundilise vahega põhikaadreid ja nende väikese halltoonides pildi sõrmejälgi. Slaidide olek salvestatakse ka siis, kui slaide ei leita või tulemus jääb ebaselgeks.
+Slaidi-worker kontrollib Echo slaidikirjeid, video olemasolu ja videopildi sisu. Video sisu esmane kontroll kasutab vaikimisi 20-sekundilise vahega põhikaadreid ja nende väikese RGB-pildi sõrmejälgi. Slaidide olek salvestatakse ka siis, kui slaide ei leita või tulemus jääb ebaselgeks.
 
 ### 7.5. `EXTRACTING_SLIDES`
 
@@ -226,9 +226,13 @@ Slaiditöötlus kasutab FFmpegi, Tesseracti, PyMuPDF-i, LibreOffice'i käsureave
 
 Pealkiri on slaidi peamine, kuid mitte ainus tunnus. Pildisarnasus ja slaidide järjekord väldivad sama pealkirjaga erinevate slaidide ühendamist. Animatsiooni vaheetappe ei nummerdata eraldi slaidideks.
 
-Põhivideo kontroll ei käivita igal kaadril OCR-i. Vaikimisi võrreldakse 20-sekundilise vahega põhikaadrite 32 × 18 halltoonides sõrmejälgi. Muutunud põhivahemiku sees kasutatakse vaikimisi kahe-sekundilist täpsustussammu. OCR piirdub esmalt leitud stabiilse slaidikandidaadi ülemise pealkirjaalaga; kogu slaidi OCR on varuvariant ebaselge vastavuse korral.
+Põhivideo kontroll ei käivita igal kaadril OCR-i. Vaikimisi võrreldakse 20-sekundilise vahega põhikaadrite 160 × 90 RGB-sõrmejälgi. Muutunud põhivahemiku sees kasutatakse vaikimisi kahe-sekundilist täpsustussammu. OCR piirdub ilma eraldi slaidifailita leitud stabiilse slaidikandidaadi ülemise pealkirjaalaga. Eraldi slaidifaili olemasolul loetakse stabiilselt videokaadrilt ka kogu nähtav tekst ning võrreldakse seda PDF-i tekstikihiga. Selge tekstikattuvus peab eristuma järgmisest võimalikust vastest; alles seejärel võib kasutada PDF-i lehekülge ja selle pealkirja. Kontrollimata video-OCR-i teksti transkripti slaidipealkirjana ei väljastata.
 
 Kõik detailid, terminid, olekud, vastavuse kontroll ja testjuhtumid on failis [`slaiditootlus.md`](slaiditootlus.md).
+
+Slaidimuutuse vaikimisi lävend peab tulema `.env`-ist, mitte lähtekoodi konstandist. Selle konfiguratsioonivõtme nimi on `SLIDE_CHANGE_DISTANCE` ja kinnitatud vaikeväärtus on `0.020`. Uuesti sidumise kasutajavalik on täisarvuline tundlikkusaste `−3…+3`; aste `0` kasutab vaikeväärtust, iga positiivne aste vähendab tegelikku lävendit `0.003` võrra ning iga negatiivne aste suurendab seda `0.003` võrra. Seega on tegelikud väärtused vastavalt `0.029`, `0.026`, `0.023`, `0.020`, `0.017`, `0.014` ja `0.011`. Neid kümnendväärtusi ei näidata kasutajaliideses.
+
+Slaidide uuesti sidumine on uus sama loengutöötluse `slides`-toiming, mis sõltub olemasolevast edukast ASR-i toimingust ega loo uut ASR-i toimingut. Toiming peab säilitama kasutaja valitud tundlikkusastme, tegeliku lävendi ning kasutatud konfiguratsiooni manifestis. Igal toimingul on oma väljundkataloog ja ühendatud Markdown; varasemat slaiditulemust ei kirjutata üle.
 
 ## 10. Transkripti ja slaidide ühendamine
 
@@ -294,6 +298,8 @@ Korduvkasutuse võti sisaldab sisendi kontrollsummat ja tulemust mõjutavat konf
 - ühendatud väljund: transkripti ja slaidimanifesti kontrollsummad.
 
 Slaiditöötluse või Markdown-vormistuse muutmine ei käivita ASR-i uuesti.
+
+Uuesti sidumine loob sama loengu jaoks järgmise `slides`-toimingu katse. Selle korduvkasutuse võti sisaldab lisaks videole, valikulisele slaidifailile ja slaiditöötluse versioonile ka tundlikkusastet ning sellest tuletatud tegelikku muutuselävendit. Slaiditulemuse väljunditee peab olema seotud toimingu identifikaatori või katse numbriga, mitte ainult loengu identifikaatoriga.
 
 ## 13. Konteinerid ja ressursikasutus
 
@@ -441,6 +447,8 @@ MVP3 lisab vähemalt kaks püsivat konteinerit: FastAPI veebiteenuse ja ühe pü
 
 Ressursimahukad tööliigid on ORDS-is `application_code=ttu_loeng` all `asr` ja `slides`. Sama loengu slaiditöö `previous_job_id` viitab selle loengu ASR-i ORDS-i `job_id` väärtusele. ORDS on ainus järjekorra ja käivitamisloa autoriteet; rakendus ei pea kohalikku järjekorda. Rakenduse püsiv olek seob loengu, kasutaja slaidifaili ja ORDS-i tööde ID-d, kuid seda ei kasutata järgmise töö valimiseks.
 
+Eduka ASR-i järel võib administraator luua täiendava `slides`-toimingu. See kasutab sama ASR-i `previous_job_id` väärtust nagu esimene slaiditöö, kuid on uus ORDS-i töö ja uus rakenduse toiming. Toimingu sisendina säilitatakse tundlikkusaste `−3…+3`; worker tuletab sellest `.env`-i `SLIDE_CHANGE_DISTANCE` väärtuse suhtes tegeliku lävendi. Loengu detailvaade näitab iga edukat slaiditulemust eraldi versioonina.
+
 ORDS-i järjekorra API autentimine kasutab OAuth `client_credentials` voogu. `ttu_loeng` rakendusel on oma OAuth-klient; kliendi ID ja saladus tulevad `.env` failist ning access tokenit hoitakse ainult mälus. Kõik järjekorra API kutsed kasutavad Bearer-tokenit.
 
 Kasutaja saab korraga valida mitu loengut ja siduda iga loenguga oma valikulise slaidifaili. Veebiliides kuvab iga loengu ASR-i, sõltuva slaiditöö ja valmis tulemuse. Iga taustatöö olekut näidatakse ühe ORDS-i olekumärgisega; dubleeriva kohaliku tulemuse teksti asemel kuvatakse `BACKGROUND_OPERATIONS.LOCAL_STARTED_AT` ja `LOCAL_COMPLETED_AT`. UTC-ajad edastatakse ISO 8601 kujul brauserile, mis teisendab need oma ajavööndisse ja kuvab 24-tunnisel kujul `dd.mm.yyyy hh:mm:ss`. ORDS-i olek on järjekorra ja täitmise tõeallikas; rakenduse artefaktide olemasolu ja sisemised vead on rakenduse tõeallikas.
@@ -448,6 +456,8 @@ Kasutaja saab korraga valida mitu loengut ja siduda iga loenguga oma valikulise 
 Brauserikasutaja autentimine toimub Google Identity Services ID-tokeniga samal põhimõttel nagu serveri `fun-o.eu` ja `haldus` rakendustes. Backend kontrollib tokenit Google'i `tokeninfo` teenuse kaudu, võrdleb `aud` väärtust `GOOGLE_CLIENT_ID` seadistusega ning nõuab kinnitatud e-posti aadressi. Esmakordsel edukal sisselogimisel luuakse `USER` rolliga `APP_USERS` kirje; rakendus ei halda kohalikke paroole. Aegunud või puuduva sessiooniga kaitstud HTML-päring suunatakse avalehe puhtale Google'i sisselogimisvaatele. `USER` näeb ja laadib alla kõigi aktiivsete tööde tulemusi, kuid uusi töid ja avalikke jagamislinke haldab ainult `ADMIN`. Rolli `ADMIN` määramine toimub otse andmebaasis. Avalikku jagamist pakutakse ja `LECTURE_PROCESSINGS.public_id` saab väärtustada alles pärast slaididega ühendatud `slides/transcript_with_slides.md` valmimist. Sisselogitud ja anonüümne allalaadimine väljastavad sama ZIP-paketi ega lange tagasi ASR-i toortranskriptile; anonüümne kasutaja ei näe tööde nimekirja. ZIP luuakse päringu ajal, selle juurkataloogi ja Markdown-faili nimi tuletatakse failisüsteemi jaoks turvaliseks tehtud loengu nimest ning `images/` sisaldab kõiki Markdownis viidatud slaidipilte. Paketti ei säilitata püsiva artefaktina.
 
 Markdown-vaates teisendatakse transkriptsioonisegmentide ajavahemikud videolinkideks. Link juhib ühe modali ülaosas paikneva HTML5-videopleieri vastava segmendi algusajale; segmendi lõppaeg ei peata videot. Videoallikaks valitakse Echo360 väikseim esitusvariant. Kuna Echo meediaallikas nõuab avaliku kursusesessiooni küpsist, ei anta meedia URL-i brauserile otse. Autenditud videoendpoint vahendab brauseri ühte baitvahemikku kirjeldava `Range`-päise Echo360-le ja tagastab `206 Partial Content` vastuse voona. Videot ei kirjutata runtime-kataloogi ega puhverdata rakenduses tervikuna.
+
+Loengu detailvaate eraldi videonupp kasutab sama autenditud videoendpoint'i ja avab video oma modalis; sellega ei avata Echo360 kasutajaliidest ega nõuta brauserilt Echo küpsist. Modalis kuvatakse lisaks algne `https://echo360.org.uk/lesson/<lesson-id>/classroom` URL koos selgitusega, et Echo classroom-vaate avamiseks peab brauseris juba olema kehtiv Echo360 sessioon. Videomodali sulgemisel peatatakse esitus ja eemaldatakse pleieri allikas.
 
 Sisselogitud kasutaja avaleht rühmitab loengud `SUBMISSIONS.ECHO_CANONICAL_SECTION_ID` järgi kursusteks. Kursuse kuvatav nimi pärineb `SUBMISSIONS.COURSE_TITLE` väljast ning kursused järjestatakse selle järgi. Valitud kursuse loengud järjestatakse `LECTURE_PROCESSINGS.LECTURE_TITLE` järgi ja kuvatakse kompaktses nimekirjas. Nii loengute nimekirjas kui detailvaates kuvatakse andmebaasikirje lisamisaja asemel Echo360-st saadud tegelik loengu toimumisaeg `LECTURE_PROCESSINGS.LECTURE_START_AT`, et sama pealkirjaga loenguid saaks eristada. Administraator võib detailvaatest soft delete'iga sulgeda konkreetse loengutöötluse alles pärast loengu nime kuvavas modalis `Jah` valimist; see ei sulge kursuse teisi loenguid ega submission'it.
 

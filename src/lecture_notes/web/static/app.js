@@ -187,6 +187,31 @@ document.addEventListener("DOMContentLoaded", () => {
       if (event.target === deleteLectureDialog) deleteLectureDialog.close();
     });
   }
+  const originalVideoDialog = document.getElementById("originalVideoDialog");
+  const openOriginalVideoDialog = document.getElementById("openOriginalVideoDialog");
+  const closeOriginalVideoDialog = document.getElementById("closeOriginalVideoDialog");
+  const originalLectureVideo = document.getElementById("originalLectureVideo");
+  if (originalVideoDialog && openOriginalVideoDialog && closeOriginalVideoDialog && originalLectureVideo) {
+    const releaseOriginalVideo = () => {
+      originalLectureVideo.pause();
+      originalLectureVideo.removeAttribute("src");
+      originalLectureVideo.load();
+      document.body.classList.remove("modal-open");
+    };
+    openOriginalVideoDialog.addEventListener("click", () => {
+      originalVideoDialog.showModal();
+      document.body.classList.add("modal-open");
+      if (!originalLectureVideo.getAttribute("src")) {
+        originalLectureVideo.src = originalVideoDialog.dataset.videoUrl;
+        originalLectureVideo.load();
+      }
+    });
+    closeOriginalVideoDialog.addEventListener("click", () => originalVideoDialog.close());
+    originalVideoDialog.addEventListener("click", (event) => {
+      if (event.target === originalVideoDialog) originalVideoDialog.close();
+    });
+    originalVideoDialog.addEventListener("close", releaseOriginalVideo);
+  }
   if (!document.querySelector("[data-auto-refresh='true']")) return;
   const seconds = Number.parseInt(document.body.dataset.pollInterval || "0", 10);
   if (Number.isFinite(seconds) && seconds > 0) {
