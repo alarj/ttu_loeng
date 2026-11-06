@@ -155,6 +155,8 @@ Koostaja: AI (OpenAI Codex), kasutaja juhiste järgi. Käesoleva dokumendi esime
 - [`tests/test_web_app.py`](../tests/test_web_app.py), [`tests/test_web_services.py`](../tests/test_web_services.py), [`tests/test_ords_client.py`](../tests/test_ords_client.py) ja [`tests/test_worker.py`](../tests/test_worker.py) — ligipääsu, teenusekihi, ORDS-kliendi ja püsiva workeri unit-testid.
 
 Registrit tuleb täiendada kohe, kui projektile lisandub README, andmeskeem, API leping, konteinerite kirjeldus, hindamisandmete register või muu asjakohane allikas. Registrisse kuulumine ei anna allikale teiste ees ülimuslikkust.
+- [`docs/todo.md`](todo.md) — rakenduse püsivad tööülesanded ja arendusplaanid.
+
 
 ## 10. Millal mida kindlasti lugeda
 
