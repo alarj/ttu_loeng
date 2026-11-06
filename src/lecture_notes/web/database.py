@@ -136,6 +136,7 @@ class OracleTransaction:
         lecture_processing_id: int,
         operation_type: str,
         previous_operation_id: int | None,
+        slide_sensitivity_level: int | None = None,
     ) -> tuple[int, str]:
         with self.connection.cursor() as cursor:
             output = cursor.var(int)
@@ -143,11 +144,22 @@ class OracleTransaction:
             idempotency_key = f"ttu_loeng:{operation_type}:{public_id}"
             cursor.execute(
                 """
+                SELECT NVL(MAX(attempt_number), 0) + 1
+                  FROM background_operations
+                 WHERE lecture_processing_id = :lecture_id
+                   AND operation_type = :operation_type
+                """,
+                {"lecture_id": lecture_processing_id, "operation_type": operation_type},
+            )
+            attempt_number = int(cursor.fetchone()[0])
+            cursor.execute(
+                """
                 INSERT INTO background_operations (
                     public_id, lecture_processing_id, previous_operation_id,
-                    operation_type, attempt_number, idempotency_key
+                    operation_type, attempt_number, slide_sensitivity_level, idempotency_key
                 ) VALUES (
-                    :public_id, :lecture_id, :previous_id, :operation_type, 1, :idempotency_key
+                    :public_id, :lecture_id, :previous_id, :operation_type,
+                    :attempt_number, :slide_sensitivity_level, :idempotency_key
                 ) RETURNING operation_id INTO :output
                 """,
                 {
@@ -155,6 +167,8 @@ class OracleTransaction:
                     "lecture_id": lecture_processing_id,
                     "previous_id": previous_operation_id,
                     "operation_type": operation_type,
+                    "attempt_number": attempt_number,
+                    "slide_sensitivity_level": slide_sensitivity_level,
                     "idempotency_key": idempotency_key,
                     "output": output,
                 },
@@ -342,6 +356,7 @@ class OracleRepository:
                        s.echo_canonical_section_id, s.course_title,
                        lp.lecture_title, lp.echo_lesson_id,
                        lp.lecture_start_at, lp.duration_seconds, lp.recording_status,
+                       lp.default_slides_operation_id,
                        lp.created
                   FROM lecture_processings lp
                   JOIN submissions s ON s.submission_id = lp.submission_id
@@ -370,6 +385,7 @@ class OracleRepository:
                        s.echo_canonical_section_id, s.course_title,
                        lp.lecture_title, lp.echo_lesson_id,
                        lp.lecture_start_at, lp.duration_seconds, lp.recording_status,
+                       lp.default_slides_operation_id,
                        lp.created
                   FROM lecture_processings lp
                   JOIN submissions s ON s.submission_id = lp.submission_id
@@ -398,6 +414,11 @@ class OracleRepository:
             duration_seconds=float(row["duration_seconds"]) if row["duration_seconds"] is not None else None,
             recording_status=row["recording_status"],
             created=row["created"],
+            default_slides_operation_id=(
+                int(row["default_slides_operation_id"])
+                if row["default_slides_operation_id"] is not None
+                else None
+            ),
             operations=[],
         )
 
@@ -410,7 +431,8 @@ class OracleRepository:
         with self._connection() as connection, connection.cursor() as cursor:
             cursor.execute(
                 f"""
-                SELECT operation_id, lecture_processing_id, operation_type, ords_job_id,
+                SELECT operation_id, lecture_processing_id, operation_type, attempt_number,
+                       slide_sensitivity_level, ords_job_id,
                        local_outcome, registration_error_message,
                        local_started_at, local_completed_at
                   FROM background_operations
@@ -427,7 +449,13 @@ class OracleRepository:
                 Operation(
                     operation_id=int(row["operation_id"]),
                     operation_type=row["operation_type"],
+                    attempt_number=int(row["attempt_number"]),
                     ords_job_id=int(row["ords_job_id"]) if row["ords_job_id"] is not None else None,
+                    slide_sensitivity_level=(
+                        int(row["slide_sensitivity_level"])
+                        if row["slide_sensitivity_level"] is not None
+                        else None
+                    ),
                     local_outcome=row["local_outcome"],
                     registration_error_message=row["registration_error_message"],
                     local_started_at=row["local_started_at"],
@@ -470,6 +498,61 @@ class OracleRepository:
         )
         return public_id
 
+    def create_slide_reprocessing(self, lecture_processing_id: int, sensitivity_level: int) -> tuple[int, str, int]:
+        with self.transaction() as transaction:
+            with transaction.connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT lecture_processing_id
+                      FROM lecture_processings
+                     WHERE lecture_processing_id = :lecture_id
+                       AND end_date IS NULL
+                       FOR UPDATE
+                    """,
+                    {"lecture_id": lecture_processing_id},
+                )
+                if cursor.fetchone() is None:
+                    raise KeyError(lecture_processing_id)
+                cursor.execute(
+                    """
+                    SELECT operation_id, ords_job_id
+                      FROM background_operations
+                     WHERE lecture_processing_id = :lecture_id
+                       AND operation_type = 'asr'
+                       AND local_outcome = 'SUCCEEDED'
+                       AND ords_job_id IS NOT NULL
+                       AND end_date IS NULL
+                    """,
+                    {"lecture_id": lecture_processing_id},
+                )
+                row = cursor.fetchone()
+            if row is None:
+                raise KeyError(lecture_processing_id)
+            previous_operation_id, previous_job_id = (int(row[0]), int(row[1]))
+            operation_id, idempotency_key = transaction.insert_operation(
+                lecture_processing_id,
+                "slides",
+                previous_operation_id,
+                sensitivity_level,
+            )
+        return operation_id, idempotency_key, previous_job_id
+
+    def set_default_slides_operation(self, lecture_processing_id: int, operation_id: int) -> None:
+        with self._connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE lecture_processings
+                   SET default_slides_operation_id = :operation_id,
+                       last_updated = SYSTIMESTAMP
+                 WHERE lecture_processing_id = :lecture_id
+                   AND end_date IS NULL
+                """,
+                {"lecture_id": lecture_processing_id, "operation_id": operation_id},
+            )
+            if cursor.rowcount != 1:
+                raise KeyError(lecture_processing_id)
+            connection.commit()
+
     def soft_delete_lecture(self, lecture_processing_id: int) -> None:
         with self._connection() as connection, connection.cursor() as cursor:
             cursor.execute(
@@ -490,7 +573,7 @@ class OracleRepository:
             cursor.execute(
                 """
                 SELECT bo.operation_id, bo.operation_type, bo.ords_job_id,
-                       bo.local_outcome,
+                       bo.local_outcome, bo.slide_sensitivity_level,
                        lp.lecture_processing_id, lp.echo_lesson_id,
                        s.echo_public_url,
                        u.stored_relative_path AS slides_relative_path

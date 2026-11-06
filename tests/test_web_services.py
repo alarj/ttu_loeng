@@ -54,9 +54,9 @@ class FakeTransaction:
         self.uploads.append((lecture_id, upload))
         return 30
 
-    def insert_operation(self, lecture_id, operation_type, previous_id):
+    def insert_operation(self, lecture_id, operation_type, previous_id, slide_sensitivity_level=None):
         operation_id = 40 if operation_type == "asr" else 41
-        self.operations.append((lecture_id, operation_type, previous_id))
+        self.operations.append((lecture_id, operation_type, previous_id, slide_sensitivity_level))
         return operation_id, f"key-{operation_type}"
 
 
@@ -68,11 +68,25 @@ class FakeRepository:
         self.existing_submission_id = None
         self.sharing_calls = []
         self.delete_calls = []
-        self.public_lecture = SimpleNamespace(
+        self.reprocess_calls = []
+        self.default_calls = []
+        self.public_lecture = Lecture(
             lecture_processing_id=20,
+            public_id="public-id",
+            submission_id=10,
             lecture_title="Loeng 1",
             echo_canonical_section_id="22222222-2222-2222-2222-222222222222",
+            course_title="Testkursus",
             echo_lesson_id="33333333-3333-3333-3333-333333333333",
+            lecture_start_at=None,
+            duration_seconds=None,
+            recording_status="available",
+            created=None,
+            default_slides_operation_id=None,
+            operations=[
+                Operation(40, "asr", 1, 100, local_outcome="SUCCEEDED"),
+                Operation(41, "slides", 1, 101, slide_sensitivity_level=0, local_outcome="SUCCEEDED"),
+            ],
         )
         self.course = SimpleNamespace(
             echo_canonical_section_id="22222222-2222-2222-2222-222222222222",
@@ -115,6 +129,13 @@ class FakeRepository:
     def soft_delete_lecture(self, lecture_id):
         self.delete_calls.append(lecture_id)
 
+    def create_slide_reprocessing(self, lecture_id, sensitivity_level):
+        self.reprocess_calls.append((lecture_id, sensitivity_level))
+        return 42, "key-slides-2", 100
+
+    def set_default_slides_operation(self, lecture_id, operation_id):
+        self.default_calls.append((lecture_id, operation_id))
+
 
 class FakeOrds:
     def __init__(self, fail_asr=False) -> None:
@@ -155,7 +176,7 @@ class LectureServiceTests(unittest.TestCase):
             )
 
             self.assertEqual(submission_id, 10)
-            self.assertEqual(repository.tx.operations, [(20, "asr", None), (20, "slides", 40)])
+            self.assertEqual(repository.tx.operations, [(20, "asr", None, None), (20, "slides", 40, 0)])
             self.assertEqual(repository.registered, [(40, 100), (41, 101)])
             self.assertEqual(ords.calls[1]["previous_job_id"], 100)
             stored = repository.tx.uploads[0][1]
@@ -208,14 +229,14 @@ class LectureServiceTests(unittest.TestCase):
     def test_combined_markdown_is_preferred(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            service, _, _ = self.service(root)
+            service, repository, _ = self.service(root)
             transcript = root / "outputs/jobs/20/transcript/taltechnlp-turbo-et-verbatim-2604-int8/transcript.md"
-            combined = root / "outputs/jobs/20/slides/transcript_with_slides.md"
+            combined = root / "outputs/jobs/20/slides/41/transcript_with_slides.md"
             transcript.parent.mkdir(parents=True)
             combined.parent.mkdir(parents=True)
             transcript.write_text("transcript", encoding="utf-8")
             combined.write_text("combined", encoding="utf-8")
-            self.assertEqual(service.result_path(20), combined)
+            self.assertEqual(service.result_path(repository.public_lecture), combined)
 
     def test_public_sharing_requires_transcript_with_slides(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -226,7 +247,7 @@ class LectureServiceTests(unittest.TestCase):
                 service.set_public_sharing(20, True)
             self.assertEqual(repository.sharing_calls, [])
 
-            combined = root / "outputs/jobs/20/slides/transcript_with_slides.md"
+            combined = root / "outputs/jobs/20/slides/41/transcript_with_slides.md"
             combined.parent.mkdir(parents=True)
             combined.write_text("combined", encoding="utf-8")
             self.assertEqual(service.set_public_sharing(20, True), "public-id")
@@ -235,7 +256,7 @@ class LectureServiceTests(unittest.TestCase):
     def test_public_download_never_falls_back_to_raw_transcript(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            service, _, _ = self.service(root)
+            service, repository, _ = self.service(root)
             transcript = root / "outputs/jobs/20/transcript/taltechnlp-turbo-et-verbatim-2604-int8/transcript.md"
             transcript.parent.mkdir(parents=True)
             transcript.write_text("raw transcript", encoding="utf-8")
@@ -243,7 +264,7 @@ class LectureServiceTests(unittest.TestCase):
             with self.assertRaises(KeyError):
                 service.public_result("public-id")
 
-            combined = root / "outputs/jobs/20/slides/transcript_with_slides.md"
+            combined = root / "outputs/jobs/20/slides/41/transcript_with_slides.md"
             combined.parent.mkdir(parents=True)
             combined.write_text("combined", encoding="utf-8")
             _, path = service.public_result("public-id")
@@ -253,8 +274,8 @@ class LectureServiceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             service, _, _ = self.service(root)
-            combined = root / "outputs/jobs/20/slides/transcript_with_slides.md"
-            image = root / "outputs/jobs/20/slides/images/slide_001.png"
+            combined = root / "outputs/jobs/20/slides/41/transcript_with_slides.md"
+            image = root / "outputs/jobs/20/slides/41/images/slide_001.png"
             combined.parent.mkdir(parents=True)
             image.parent.mkdir(parents=True)
             combined.write_text("![Slaid](images/slide_001.png)\n", encoding="utf-8")
@@ -281,13 +302,32 @@ class LectureServiceTests(unittest.TestCase):
     def test_slide_image_path_accepts_only_existing_image_filename(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            service, _, _ = self.service(root)
-            image = root / "outputs/jobs/20/slides/images/slide_001.png"
+            service, repository, _ = self.service(root)
+            image = root / "outputs/jobs/20/slides/41/images/slide_001.png"
             image.parent.mkdir(parents=True)
+            (image.parent.parent / "transcript_with_slides.md").write_text("combined", encoding="utf-8")
             image.write_bytes(b"png")
-            self.assertEqual(service.slide_image_path(20, "slide_001.png"), image)
-            self.assertIsNone(service.slide_image_path(20, "../slide_001.png"))
-            self.assertIsNone(service.slide_image_path(20, "slide_001.svg"))
+            self.assertEqual(service.slide_image_path(repository.public_lecture, "slide_001.png"), image)
+            self.assertIsNone(service.slide_image_path(repository.public_lecture, "../slide_001.png"))
+            self.assertIsNone(service.slide_image_path(repository.public_lecture, "slide_001.svg"))
+
+    def test_reprocess_registers_only_new_dependent_slides_job(self):
+        with tempfile.TemporaryDirectory() as directory:
+            service, repository, ords = self.service(Path(directory))
+            service.reprocess_slides(20, 2)
+            self.assertEqual(repository.reprocess_calls, [(20, 2)])
+            self.assertEqual(ords.calls[0]["operation_type"], "slides")
+            self.assertEqual(ords.calls[0]["previous_job_id"], 100)
+
+    def test_default_slide_version_must_be_available(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            service, repository, _ = self.service(root)
+            path = root / "outputs/jobs/20/slides/41/transcript_with_slides.md"
+            path.parent.mkdir(parents=True)
+            path.write_text("combined", encoding="utf-8")
+            service.set_default_slide_version(20, 41)
+            self.assertEqual(repository.default_calls, [(20, 41)])
 
     def test_soft_delete_targets_requested_lecture(self):
         with tempfile.TemporaryDirectory() as directory:

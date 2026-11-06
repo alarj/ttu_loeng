@@ -57,6 +57,7 @@ CREATE TABLE lecture_processings (
     lecture_start_at TIMESTAMP,
     duration_seconds NUMBER(12,3),
     recording_status VARCHAR2(30 CHAR) NOT NULL,
+    default_slides_operation_id NUMBER(19),
     start_date DATE DEFAULT SYSDATE NOT NULL,
     end_date DATE,
     created TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
@@ -103,6 +104,7 @@ CREATE TABLE background_operations (
     previous_operation_id NUMBER(19),
     operation_type VARCHAR2(20 CHAR) NOT NULL,
     attempt_number NUMBER(9) NOT NULL,
+    slide_sensitivity_level NUMBER(1),
     idempotency_key VARCHAR2(250 CHAR) NOT NULL,
     ords_job_id NUMBER(19),
     registration_error_code VARCHAR2(100 CHAR),
@@ -131,6 +133,10 @@ CREATE TABLE background_operations (
         FOREIGN KEY (lecture_processing_id, previous_operation_id)
         REFERENCES background_operations (lecture_processing_id, operation_id)
 );
+
+ALTER TABLE lecture_processings ADD CONSTRAINT lecture_proc_default_slide_fk
+    FOREIGN KEY (lecture_processing_id, default_slides_operation_id)
+    REFERENCES background_operations (lecture_processing_id, operation_id);
 
 COMMENT ON TABLE app_users IS
     'Rakenduse kasutajad ja nende rakenduserollid';
@@ -188,6 +194,8 @@ COMMENT ON COLUMN lecture_processings.duration_seconds IS
     'Loengusalvestise kestus sekundites';
 COMMENT ON COLUMN lecture_processings.recording_status IS
     'Echo360 salvestise olek lahendamise hetkel';
+COMMENT ON COLUMN lecture_processings.default_slides_operation_id IS
+    'Kasutaja vaatamise ja allalaadimise vaikeversiooniks valitud slaiditoiming';
 
 COMMENT ON TABLE uploads IS
     'Kasutaja üleslaaditud sisendfailide metaandmed';
@@ -224,6 +232,8 @@ COMMENT ON COLUMN background_operations.operation_type IS
     'Rakenduse toimingu liik';
 COMMENT ON COLUMN background_operations.attempt_number IS
     'Loengu ja toiminguliigi katse number';
+COMMENT ON COLUMN background_operations.slide_sensitivity_level IS
+    'Slaiditöötluse kasutaja valitud tuvastamistäpsuse aste -3 kuni +3';
 COMMENT ON COLUMN background_operations.idempotency_key IS
     'ORDS-ile saadetud korduskindluse võti';
 COMMENT ON COLUMN background_operations.ords_job_id IS

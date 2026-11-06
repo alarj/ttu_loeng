@@ -87,6 +87,7 @@ class WorkerSettings:
     asr_configuration_id: str
     slide_coarse_seconds: float
     slide_refine_seconds: float
+    slide_change_distance: float
 
     @classmethod
     def from_env(cls) -> "WorkerSettings":
@@ -100,5 +101,6 @@ class WorkerSettings:
             asr_configuration_id="taltechnlp-turbo-et-verbatim-2604-int8",
             slide_coarse_seconds=float(os.getenv("SLIDE_COARSE_INTERVAL_SECONDS", "20")),
             slide_refine_seconds=float(os.getenv("SLIDE_REFINE_INTERVAL_SECONDS", "2")),
+            slide_change_distance=_positive_float("SLIDE_CHANGE_DISTANCE", 0.020),
         )
 

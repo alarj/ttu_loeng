@@ -23,6 +23,7 @@ class FakeRepository:
             "echo_lesson_id": "lesson-id",
             "echo_public_url": "https://echo360.org.uk/section/id/public",
             "slides_relative_path": "inputs/12/slides.pdf",
+            "slide_sensitivity_level": 2,
             "local_outcome": self.local_outcome,
         }
 
@@ -77,6 +78,7 @@ class WorkerTests(unittest.TestCase):
                 asr_configuration_id="config",
                 slide_coarse_seconds=20,
                 slide_refine_seconds=2,
+                slide_change_distance=0.020,
             )
             created = []
 
@@ -102,6 +104,9 @@ class WorkerTests(unittest.TestCase):
             self.assertEqual(ords.heartbeats, [99])
             self.assertEqual(ords.completed[0][1]["outcome"], "SUCCEEDED")
             self.assertIn("--slides-input", created[0].command)
+            self.assertIn("--change-distance", created[0].command)
+            self.assertIn("0.014000", created[0].command)
+            self.assertIn(str(Path(directory) / "outputs/jobs/12/slides/55"), created[0].command)
 
     def test_recovered_completed_operation_is_not_run_again(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -118,6 +123,7 @@ class WorkerTests(unittest.TestCase):
                 asr_configuration_id="config",
                 slide_coarse_seconds=20,
                 slide_refine_seconds=2,
+                slide_change_distance=0.020,
             )
             worker = Worker(
                 repository,

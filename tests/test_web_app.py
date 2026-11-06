@@ -40,6 +40,7 @@ class FakeRepository:
             duration_seconds=3600,
             recording_status="available",
             created=datetime(2026, 11, 4, 12, 0),
+            default_slides_operation_id=None,
             operations=[],
         )
 
@@ -160,13 +161,16 @@ class WebAppTests(unittest.TestCase):
     def test_anonymous_user_cannot_see_job_list_but_public_download_works(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            output = root / "outputs/jobs/12/slides/transcript_with_slides.md"
-            image = root / "outputs/jobs/12/slides/images/slide_001.png"
+            output = root / "outputs/jobs/12/slides/2/transcript_with_slides.md"
+            image = root / "outputs/jobs/12/slides/2/images/slide_001.png"
             output.parent.mkdir(parents=True)
             image.parent.mkdir(parents=True)
             output.write_text("![Slaid](images/slide_001.png)\n", encoding="utf-8")
             image.write_bytes(b"public-slide")
             with self.make_client(root) as client:
+                client.app.state.repository.lecture.operations = [
+                    Operation(2, "slides", 1, 2, slide_sensitivity_level=0, local_outcome="SUCCEEDED")
+                ]
                 index = client.get("/")
                 self.assertIn("Logi Google", index.text)
                 self.assertNotIn("Testloeng", index.text)
@@ -294,8 +298,8 @@ class WebAppTests(unittest.TestCase):
     def test_lecture_detail_has_modal_slides_compact_actions_and_course_back_button(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            output = root / "outputs/jobs/12/slides/transcript_with_slides.md"
-            image = root / "outputs/jobs/12/slides/images/slide_001.png"
+            output = root / "outputs/jobs/12/slides/2/transcript_with_slides.md"
+            image = root / "outputs/jobs/12/slides/2/images/slide_001.png"
             output.parent.mkdir(parents=True)
             image.parent.mkdir(parents=True)
             output.write_text(
@@ -304,20 +308,24 @@ class WebAppTests(unittest.TestCase):
                 encoding="utf-8",
             )
             image.write_bytes(b"slide-image")
-            with self.make_client(root, "USER") as client:
+            with self.make_client(root, "ADMIN") as client:
                 client.app.state.repository.lecture.operations = [
                     Operation(
-                        1,
-                        "asr",
-                        1,
+                        operation_id=1,
+                        operation_type="asr",
+                        attempt_number=1,
+                        ords_job_id=1,
                         local_outcome="SUCCEEDED",
                         local_started_at=datetime(2026, 11, 5, 6, 12, 23),
                         local_completed_at=datetime(2026, 11, 5, 8, 3, 0),
                     ),
                     Operation(
-                        2,
-                        "slides",
-                        2,
+                        operation_id=2,
+                        operation_type="slides",
+                        attempt_number=1,
+                        ords_job_id=2,
+                        slide_sensitivity_level=0,
+                        local_outcome="SUCCEEDED",
                         local_started_at=datetime(2026, 11, 5, 8, 4, 0),
                     ),
                 ]
@@ -330,7 +338,10 @@ class WebAppTests(unittest.TestCase):
                 self.assertIn('id="transcriptVideo"', response.text)
                 self.assertIn('href="#video-at-27">00:00:27–00:00:30</a>', response.text)
                 self.assertIn("<h1>Transkript</h1>", response.text)
-                self.assertIn('src="/lectures/12/slides/slide_001.png"', response.text)
+                self.assertIn('src="/lectures/12/slides/2/slide_001.png"', response.text)
+                self.assertIn('id="openReprocessSlidesDialog"', response.text)
+                self.assertIn('id="slideVersionSelect"', response.text)
+                self.assertIn('id="openDefaultSlideVersionDialog"', response.text)
                 self.assertIn('href="/courses/course-section-id"', response.text)
                 self.assertIn('id="openOriginalVideoDialog"', response.text)
                 self.assertIn('id="originalVideoDialog"', response.text)
@@ -346,7 +357,7 @@ class WebAppTests(unittest.TestCase):
                 self.assertIn('class="browser-date-time" datetime="2026-11-05T06:12:23Z"', response.text)
                 self.assertIn('class="browser-date-time" datetime="2026-11-05T08:03:00Z"', response.text)
                 self.assertIn('class="status-badge compact-status status-running">RUNNING</span>', response.text)
-                slide = client.get("/lectures/12/slides/slide_001.png")
+                slide = client.get("/lectures/12/slides/2/slide_001.png")
                 self.assertEqual(slide.status_code, 200)
                 self.assertEqual(slide.content, b"slide-image")
                 download = client.get("/lectures/12/download")
@@ -412,7 +423,10 @@ class WebAppTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 409)
                 self.assertEqual(client.app.state.repository.sharing_calls, [])
 
-                combined = root / "outputs/jobs/12/slides/transcript_with_slides.md"
+                client.app.state.repository.lecture.operations = [
+                    Operation(2, "slides", 1, 2, slide_sensitivity_level=0, local_outcome="SUCCEEDED")
+                ]
+                combined = root / "outputs/jobs/12/slides/2/transcript_with_slides.md"
                 combined.parent.mkdir(parents=True)
                 combined.write_text("combined", encoding="utf-8")
                 ready_detail = client.get("/lectures/12")

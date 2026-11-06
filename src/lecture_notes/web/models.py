@@ -42,7 +42,9 @@ class StoredUpload:
 class Operation:
     operation_id: int
     operation_type: str
+    attempt_number: int
     ords_job_id: int | None
+    slide_sensitivity_level: int | None = None
     local_outcome: str | None = None
     registration_error_message: str | None = None
     status: str | None = None
@@ -71,5 +73,22 @@ class Lecture:
     duration_seconds: float | None
     recording_status: str
     created: object
+    default_slides_operation_id: int | None
     operations: list[Operation]
+
+    @property
+    def asr_succeeded(self) -> bool:
+        return any(
+            operation.operation_type == "asr" and operation.local_outcome == "SUCCEEDED"
+            for operation in self.operations
+        )
+
+
+@dataclass(frozen=True)
+class SlideVersion:
+    operation_id: int
+    attempt_number: int
+    sensitivity_level: int | None
+    markdown_path: Path
+    is_default: bool
 

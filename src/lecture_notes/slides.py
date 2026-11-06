@@ -47,6 +47,8 @@ def build_parser() -> argparse.ArgumentParser:
     process.add_argument("--slides-input", type=Path)
     process.add_argument("--coarse-seconds", type=float, default=20.0)
     process.add_argument("--refine-seconds", type=float, default=2.0)
+    process.add_argument("--change-distance", type=float, default=CHANGE_DISTANCE)
+    process.add_argument("--sensitivity-level", type=int, default=0)
     return parser
 
 
@@ -84,10 +86,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
 
         if args.command == "process":
-            if args.coarse_seconds <= 0 or args.refine_seconds <= 0:
-                raise ValueError("Coarse and refinement intervals must be positive")
+            if args.coarse_seconds <= 0 or args.refine_seconds <= 0 or args.change_distance <= 0:
+                raise ValueError("Sampling intervals and change distance must be positive")
             if args.refine_seconds > args.coarse_seconds:
                 raise ValueError("Refinement interval must not exceed the coarse interval")
+            if not -3 <= args.sensitivity_level <= 3:
+                raise ValueError("Sensitivity level must be between -3 and +3")
             transcript_path = args.transcript.resolve()
             if not transcript_path.is_file():
                 raise ValueError(f"Transcript does not exist: {transcript_path}")
@@ -103,6 +107,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 work_root=config.work_root,
                 coarse_seconds=args.coarse_seconds,
                 refine_seconds=args.refine_seconds,
+                change_distance=args.change_distance,
+                sensitivity_level=args.sensitivity_level,
             )
             print(
                 json.dumps(
@@ -301,6 +307,8 @@ def process_slides(
     work_root: Path,
     coarse_seconds: float,
     refine_seconds: float,
+    change_distance: float = CHANGE_DISTANCE,
+    sensitivity_level: int = 0,
 ) -> dict[str, Any]:
     started_at = datetime.now(timezone.utc)
     started = time.perf_counter()
@@ -317,6 +325,8 @@ def process_slides(
             "started_at": _utc_now(),
             "lesson_id": lesson_id,
             "pipeline_version": SLIDE_PIPELINE_VERSION,
+            "sensitivity_level": sensitivity_level,
+            "change_distance": change_distance,
         },
     )
     try:
@@ -352,6 +362,7 @@ def process_slides(
             duration_seconds,
             coarse_seconds,
             refine_seconds,
+            change_distance,
         )
         if references:
             _add_reference_matching_ocr(candidates)
@@ -380,9 +391,17 @@ def process_slides(
             },
             coarse_seconds=coarse_seconds,
             refine_seconds=refine_seconds,
+            change_distance=change_distance,
+            sensitivity_level=sensitivity_level,
         )
         atomic_write_json(output_dir / "slides.json", manifest)
-        merged = _render_transcript_with_slides(transcript, identities, appearances)
+        merged = _render_transcript_with_slides(
+            transcript,
+            identities,
+            appearances,
+            change_distance=change_distance,
+            sensitivity_level=sensitivity_level,
+        )
         (output_dir / "transcript_with_slides.md").write_text(merged, encoding="utf-8")
         result = {
             "slide_count": len(identities),
@@ -400,6 +419,8 @@ def process_slides(
                 "duration_seconds": result["duration_seconds"],
                 "lesson_id": lesson_id,
                 "pipeline_version": SLIDE_PIPELINE_VERSION,
+                "sensitivity_level": sensitivity_level,
+                "change_distance": change_distance,
                 "slide_count": result["slide_count"],
                 "appearance_count": result["appearance_count"],
                 "temporary_video_removed": not video_path.exists(),
@@ -418,6 +439,8 @@ def process_slides(
                 "duration_seconds": round(time.perf_counter() - started, 3),
                 "lesson_id": lesson_id,
                 "pipeline_version": SLIDE_PIPELINE_VERSION,
+                "sensitivity_level": sensitivity_level,
+                "change_distance": change_distance,
                 "temporary_video_removed": not video_path.exists(),
                 "error": {"type": type(exc).__name__, "message": str(exc)[:2000]},
             },
@@ -509,6 +532,7 @@ def _find_adaptive_slide_candidates(
     duration_seconds: float,
     coarse_seconds: float,
     refine_seconds: float,
+    change_distance: float = CHANGE_DISTANCE,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     coarse_dir = sampled_dir / "coarse"
     refined_dir = sampled_dir / "refined"
@@ -528,7 +552,7 @@ def _find_adaptive_slide_candidates(
     changed_windows: list[dict[str, float]] = []
     for left, right in zip(coarse, coarse[1:], strict=False):
         difference = image_distance(left["signature"], right["signature"])
-        if difference >= CHANGE_DISTANCE:
+        if difference >= change_distance:
             changed_windows.append(
                 {
                     "start_seconds": left["timestamp_seconds"],
@@ -567,7 +591,7 @@ def _find_adaptive_slide_candidates(
     last_selected = 0
     for index in range(1, len(samples)):
         change = image_distance(samples[last_selected]["signature"], samples[index]["signature"])
-        if change < CHANGE_DISTANCE:
+        if change < change_distance:
             continue
         stable = index == len(samples) - 1 or image_distance(
             samples[index]["signature"], samples[index + 1]["signature"]
@@ -1008,6 +1032,8 @@ def _slide_manifest(
     video: dict[str, Any],
     coarse_seconds: float,
     refine_seconds: float,
+    change_distance: float = CHANGE_DISTANCE,
+    sensitivity_level: int = 0,
 ) -> dict[str, Any]:
     slide_items = []
     for identity in identities:
@@ -1051,12 +1077,13 @@ def _slide_manifest(
             "signature_height": SIGNATURE_SIZE[1],
             "signature_color_mode": SIGNATURE_COLOR_MODE,
             **sampling,
-            "change_distance": CHANGE_DISTANCE,
+            "change_distance": change_distance,
             "stable_distance": STABLE_DISTANCE,
             "duplicate_distance": DUPLICATE_DISTANCE,
             "animation_distance": ANIMATION_DISTANCE,
         },
         "reference_slides": reference_manifest,
+        "sensitivity_level": sensitivity_level,
         "slide_count": len(slide_items),
         "appearance_count": len(appearances),
         "slides": slide_items,
@@ -1074,6 +1101,9 @@ def _render_transcript_with_slides(
     transcript: dict[str, Any],
     identities: list[dict[str, Any]],
     appearances: list[dict[str, Any]],
+    *,
+    change_distance: float = CHANGE_DISTANCE,
+    sensitivity_level: int = 0,
 ) -> str:
     segments = transcript.get("segments")
     if not isinstance(segments, list) or not segments:
@@ -1101,6 +1131,8 @@ def _render_transcript_with_slides(
         f"- Transkriptsioonisegmente: {len(segments)}",
         f"- Slaide: {len(identities)}",
         f"- Slaidide ilmumisi: {len(appearances)}",
+        f"- Slaidide tuvastamistäpsus: {'vaikimisi' if sensitivity_level == 0 else f'{sensitivity_level:+d}'}",
+        f"- Kasutatud slaidimuutuse lävend: {change_distance:.3f}",
         "",
         "## Transkript",
         "",

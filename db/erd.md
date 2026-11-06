@@ -43,6 +43,7 @@ erDiagram
     SUBMISSIONS ||--|{ LECTURE_PROCESSINGS : contains
     LECTURE_PROCESSINGS ||--o{ UPLOADS : has
     LECTURE_PROCESSINGS ||--o{ BACKGROUND_OPERATIONS : executes
+    LECTURE_PROCESSINGS o|--o| BACKGROUND_OPERATIONS : defaults_to
     BACKGROUND_OPERATIONS o|--o{ BACKGROUND_OPERATIONS : depends_on
 
     APP_USERS {
@@ -84,6 +85,7 @@ erDiagram
         TIMESTAMP lecture_start_at
         NUMBER duration_seconds
         VARCHAR2 recording_status
+        NUMBER default_slides_operation_id FK
         DATE start_date
         DATE end_date
         TIMESTAMP created
@@ -113,6 +115,7 @@ erDiagram
         NUMBER previous_operation_id FK
         VARCHAR2 operation_type
         NUMBER attempt_number
+        NUMBER slide_sensitivity_level
         VARCHAR2 idempotency_key UK
         NUMBER ords_job_id UK
         VARCHAR2 registration_error_code
@@ -185,6 +188,7 @@ Providerineutraalne rakenduse kasutaja. Tabel ei määra, kas hilisem autentimin
 | `lecture_start_at` | `TIMESTAMP` | jah | Echo360 loengu algusaeg UTC-s |
 | `duration_seconds` | `NUMBER(12,3)` | jah | Salvestise kestus sekundites |
 | `recording_status` | `VARCHAR2(30 CHAR)` | ei | Echo360 lahendamise hetke olek: `available`, `processing`, `failed` või `not_available` |
+| `default_slides_operation_id` | `NUMBER(19)` | jah | Viide sama loengu administraatori valitud slaiditöötluse vaikeversioonile; `NULL` korral kasutatakse viimast edukat versiooni |
 | `start_date` | `DATE` | ei | Kehtivuse algus; vaikimisi `SYSDATE` |
 | `end_date` | `DATE` | jah | Sulgemise aeg; füüsilist kustutamist ei kasutata |
 | `created` | `TIMESTAMP` | ei | Loomise aeg; vaikimisi `SYSTIMESTAMP` |
@@ -222,6 +226,7 @@ Rakenduse üks ASR-i või slaiditöötluse toiming ja selle seos ORDS-i tööga.
 | `previous_operation_id` | `NUMBER(19)` | jah | Slaiditöö puhul sama loengu ASR-i toiming; ASR-i puhul `NULL` |
 | `operation_type` | `VARCHAR2(20 CHAR)` | ei | `ASR` või `SLIDES` |
 | `attempt_number` | `NUMBER(9)` | ei | Sama loengu ja toiminguliigi kasutaja algatatud katse number alates ühest |
+| `slide_sensitivity_level` | `NUMBER(1)` | jah | Slaiditöötluse kasutaja valitud tuvastamistäpsuse aste `−3…+3`; ASR-i puhul `NULL` |
 | `idempotency_key` | `VARCHAR2(250 CHAR)` | ei | ORDS-ile saadetud korduskindluse võti, unikaalne |
 | `ords_job_id` | `NUMBER(19)` | jah | ORDS-i tagastatud keskne ID, unikaalne; välisviide, mitte FK |
 | `registration_error_code` | `VARCHAR2(100 CHAR)` | jah | ORDS-i esitamisvea masinloetav kood |
@@ -247,9 +252,10 @@ Rakenduse üks ASR-i või slaiditöötluse toiming ja selle seos ORDS-i tööga.
 6. Ühel loengutöötlusel võib olla mitu ajaloolist üleslaadimist, kuid korraga kõige rohkem üks aktiivne `SLIDES` fail. See reegel jõustatakse funktsioonipõhise unikaalse indeksiga, mis arvestab `end_date IS NULL` tingimust.
 7. `(lecture_processing_id, operation_type, attempt_number)` on unikaalne.
 8. Väärtustatud `previous_operation_id` peab viitama sama loengu toimingule. Skeem kasutab selle jõustamiseks komposiitset unikaalsust `(lecture_processing_id, operation_id)` ja komposiitset võõrvõtit.
-9. `SLIDES` töö ORDS-i `previous_job_id` võetakse sama loengu ASR-i toimingu `ords_job_id` väärtusest; seda ei hoita eraldi dubleeriva veeruna.
-10. `ords_job_id` ei ole kohaliku skeemi võõrvõti, sest ORDS-i järjekord asub eraldi skeemi ja HTTP API taga.
-11. Kõik väärtustatud `public_id`, `idempotency_key`, ORDS-i ID-d ja failiteed on muutumatud pärast edukat registreerimist.
+9. Väärtustatud `default_slides_operation_id` peab viitama sama loengu toimingule. Rakenduse teenusekiht lubab vaikeversiooniks määrata ainult selle loengu edukalt lõpetatud `SLIDES` toimingu.
+10. `SLIDES` töö ORDS-i `previous_job_id` võetakse sama loengu ASR-i toimingu `ords_job_id` väärtusest; seda ei hoita eraldi dubleeriva veeruna.
+11. `ords_job_id` ei ole kohaliku skeemi võõrvõti, sest ORDS-i järjekord asub eraldi skeemi ja HTTP API taga.
+12. Kõik väärtustatud `public_id`, `idempotency_key`, ORDS-i ID-d ja failiteed on muutumatud pärast edukat registreerimist.
 
 ## 7. ORDS-i ja rakenduse oleku piir
 

@@ -339,20 +339,37 @@ def create_app(
     async def lecture_detail(
         lecture_id: int,
         request: Request,
+        version: int | None = None,
         user: User = Depends(current_user),
     ) -> HTMLResponse:
         try:
             lecture = await run_in_threadpool(request.app.state.service.get_lecture, lecture_id)
         except KeyError as exc:
             raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request")) from exc
-        result_path = request.app.state.service.result_path(lecture_id)
+        selected_version = await run_in_threadpool(
+            request.app.state.service.selected_slide_version,
+            lecture,
+            version,
+        )
+        if version is not None and selected_version is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
+        slide_versions = await run_in_threadpool(request.app.state.service.slide_versions, lecture)
+        result_path = request.app.state.service.result_path(lecture, selected_version)
         result_text = (
             await run_in_threadpool(result_path.read_text, encoding="utf-8")
             if result_path is not None
             else None
         )
-        result_html = _render_markdown(result_text, lecture_id) if result_text is not None else None
-        sharing_ready = request.app.state.service.publishable_result_path(lecture_id) is not None
+        result_html = (
+            _render_markdown(
+                result_text,
+                lecture_id,
+                selected_version.operation_id if selected_version is not None else None,
+            )
+            if result_text is not None
+            else None
+        )
+        sharing_ready = request.app.state.service.publishable_result_path(lecture) is not None
         return TEMPLATES.TemplateResponse(
             request,
             "lecture.html",
@@ -364,10 +381,63 @@ def create_app(
                 sharing_ready=sharing_ready,
                 download_ready=sharing_ready,
                 result_html=result_html,
+                slide_versions=slide_versions,
+                selected_version=selected_version,
                 echo_url=f"https://echo360.org.uk/lesson/{quote(lecture.echo_lesson_id, safe='')}/classroom",
                 base_url=settings.base_url,
             ),
         )
+
+    @app.get("/lectures/{lecture_id}/versions/{operation_id}")
+    async def lecture_version_content(
+        lecture_id: int,
+        operation_id: int,
+        request: Request,
+        user: User = Depends(current_user),
+    ) -> JSONResponse:
+        del user
+        try:
+            lecture = await run_in_threadpool(request.app.state.service.get_lecture, lecture_id)
+            version = await run_in_threadpool(
+                request.app.state.service.selected_slide_version,
+                lecture,
+                operation_id,
+            )
+        except KeyError as exc:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request")) from exc
+        if version is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
+        result_text = await run_in_threadpool(version.markdown_path.read_text, encoding="utf-8")
+        return JSONResponse(
+            {
+                "operation_id": version.operation_id,
+                "html": _render_markdown(result_text, lecture_id, version.operation_id),
+                "download_url": f"/lectures/{lecture_id}/download?version={version.operation_id}",
+            }
+        )
+
+    @app.get("/lectures/{lecture_id}/slides/{operation_id}/{filename}")
+    async def lecture_version_slide(
+        lecture_id: int,
+        operation_id: int,
+        filename: str,
+        request: Request,
+        user: User = Depends(current_user),
+    ) -> FileResponse:
+        del user
+        try:
+            lecture = await run_in_threadpool(request.app.state.service.get_lecture, lecture_id)
+            version = await run_in_threadpool(
+                request.app.state.service.selected_slide_version,
+                lecture,
+                operation_id,
+            )
+        except KeyError as exc:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request")) from exc
+        path = request.app.state.service.slide_image_path(lecture, filename, version)
+        if path is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
+        return FileResponse(path)
 
     @app.get("/lectures/{lecture_id}/slides/{filename}")
     async def lecture_slide(
@@ -378,10 +448,10 @@ def create_app(
     ) -> FileResponse:
         del user
         try:
-            await run_in_threadpool(request.app.state.repository.get_lecture, lecture_id)
+            lecture = await run_in_threadpool(request.app.state.service.get_lecture, lecture_id)
         except KeyError as exc:
             raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request")) from exc
-        path = request.app.state.service.slide_image_path(lecture_id, filename)
+        path = request.app.state.service.slide_image_path(lecture, filename)
         if path is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
         return FileResponse(path)
@@ -422,16 +492,63 @@ def create_app(
     async def download_result(
         lecture_id: int,
         request: Request,
+        version: int | None = None,
         user: User = Depends(current_user),
     ) -> StreamingResponse:
         del user
         try:
-            archive = await run_in_threadpool(request.app.state.service.download_archive, lecture_id)
+            archive = await run_in_threadpool(request.app.state.service.download_archive, lecture_id, version)
         except KeyError as exc:
             raise HTTPException(status.HTTP_404_NOT_FOUND, translate("not_ready"))
         except ValidationError as exc:
             raise HTTPException(status.HTTP_409_CONFLICT, translate("not_ready")) from exc
         return _archive_response(archive)
+
+    @app.post("/lectures/{lecture_id}/slides/reprocess")
+    async def reprocess_slides(
+        lecture_id: int,
+        request: Request,
+        user: User = Depends(admin_user),
+    ) -> RedirectResponse:
+        del user
+        form = await _verified_form(request)
+        if str(form.get("confirmed") or "") != "1":
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, translate("invalid_request"))
+        try:
+            sensitivity_level = int(str(form.get("sensitivity_level") or ""))
+        except ValueError as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, translate("invalid_request")) from exc
+        try:
+            await run_in_threadpool(request.app.state.service.reprocess_slides, lecture_id, sensitivity_level)
+        except KeyError as exc:
+            raise HTTPException(status.HTTP_409_CONFLICT, translate("slides_reprocess_unavailable")) from exc
+        except ValidationError as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, translate("invalid_request")) from exc
+        return RedirectResponse(f"/lectures/{lecture_id}", status_code=HTTP_303_SEE_OTHER)
+
+    @app.post("/lectures/{lecture_id}/slides/default")
+    async def set_default_slide_version(
+        lecture_id: int,
+        request: Request,
+        user: User = Depends(admin_user),
+    ) -> RedirectResponse:
+        del user
+        form = await _verified_form(request)
+        if str(form.get("confirmed") or "") != "1":
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, translate("invalid_request"))
+        try:
+            operation_id = int(str(form.get("operation_id") or ""))
+        except ValueError as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, translate("invalid_request")) from exc
+        try:
+            await run_in_threadpool(
+                request.app.state.service.set_default_slide_version,
+                lecture_id,
+                operation_id,
+            )
+        except (KeyError, ValidationError) as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, translate("invalid_request")) from exc
+        return RedirectResponse(f"/lectures/{lecture_id}?version={operation_id}", status_code=HTTP_303_SEE_OTHER)
 
     @app.post("/lectures/{lecture_id}/sharing")
     async def change_sharing(
@@ -541,10 +658,14 @@ def _date_only(value: object) -> str:
     return str(value)
 
 
-def _render_markdown(value: str, lecture_id: int) -> str:
+def _render_markdown(value: str, lecture_id: int, operation_id: int | None = None) -> str:
     def replace_slide(match: re.Match[str]) -> str:
         filename = quote(match.group(2), safe="")
-        return f"{match.group(1)}/lectures/{lecture_id}/slides/{filename}{match.group(3)}"
+        if operation_id is None:
+            path = f"/lectures/{lecture_id}/slides/{filename}"
+        else:
+            path = f"/lectures/{lecture_id}/slides/{operation_id}/{filename}"
+        return f"{match.group(1)}{path}{match.group(3)}"
 
     def replace_time(match: re.Match[str]) -> str:
         hours, minutes, seconds = (int(part) for part in match.group(1).split(":"))

@@ -111,6 +111,10 @@ document.addEventListener("DOMContentLoaded", () => {
   if (transcriptViewer && openTranscriptViewer && closeTranscriptViewer) {
     const videoContainer = document.getElementById("transcriptVideoContainer");
     const transcriptVideo = document.getElementById("transcriptVideo");
+    const transcriptContent = document.getElementById("transcriptContent");
+    const slideVersionSelect = document.getElementById("slideVersionSelect");
+    const downloadSelectedVersion = document.getElementById("downloadSelectedVersion");
+    const defaultSlideVersionOperationId = document.getElementById("defaultSlideVersionOperationId");
     const videoUrl = transcriptViewer.dataset.videoUrl;
     let pendingVideoStart = null;
     const hideVideo = () => {
@@ -133,10 +137,13 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       transcriptVideo.addEventListener("pause", hideVideo);
       transcriptVideo.addEventListener("ended", hideVideo);
-      transcriptViewer.querySelectorAll('.markdown-viewer a[href^="#video-at-"]').forEach((link) => {
-        link.addEventListener("click", (event) => {
+    }
+    if (transcriptContent) {
+      transcriptContent.addEventListener("click", (event) => {
+        const timestampLink = event.target.closest('a[href^="#video-at-"]');
+        if (timestampLink && videoContainer && transcriptVideo && videoUrl) {
           event.preventDefault();
-          const seconds = Number.parseInt(link.getAttribute("href").slice("#video-at-".length), 10);
+          const seconds = Number.parseInt(timestampLink.getAttribute("href").slice("#video-at-".length), 10);
           if (!Number.isFinite(seconds)) return;
           videoContainer.hidden = false;
           if (!transcriptVideo.getAttribute("src")) {
@@ -149,7 +156,38 @@ document.addEventListener("DOMContentLoaded", () => {
             pendingVideoStart = seconds;
           }
           transcriptVideo.play().catch(hideVideo);
-        });
+          return;
+        }
+        const image = event.target.closest("img");
+        if (image) image.classList.toggle("is-expanded");
+      });
+      transcriptContent.addEventListener("keydown", (event) => {
+        const image = event.target.closest("img");
+        if (!image || (event.key !== "Enter" && event.key !== " ")) return;
+        event.preventDefault();
+        image.classList.toggle("is-expanded");
+      });
+      transcriptContent.querySelectorAll("img").forEach((image) => { image.tabIndex = 0; });
+    }
+    if (slideVersionSelect) {
+      slideVersionSelect.addEventListener("change", async () => {
+        const operationId = slideVersionSelect.value;
+        const template = slideVersionSelect.dataset.urlTemplate;
+        if (!operationId || !template || !transcriptContent) return;
+        try {
+          const response = await fetch(template.replace("__operation_id__", encodeURIComponent(operationId)), {
+            credentials: "same-origin",
+          });
+          if (!response.ok) throw new Error("slide-version-unavailable");
+          const payload = await response.json();
+          releaseVideo();
+          transcriptContent.innerHTML = payload.html;
+          transcriptContent.querySelectorAll("img").forEach((image) => { image.tabIndex = 0; });
+          if (downloadSelectedVersion) downloadSelectedVersion.href = payload.download_url;
+          if (defaultSlideVersionOperationId) defaultSlideVersionOperationId.value = String(payload.operation_id);
+        } catch (_error) {
+          window.location.reload();
+        }
       });
     }
     openTranscriptViewer.addEventListener("click", () => {
@@ -164,29 +202,23 @@ document.addEventListener("DOMContentLoaded", () => {
     transcriptViewer.addEventListener("close", () => {
       releaseVideo();
       document.body.classList.remove("modal-open");
-      transcriptViewer.querySelectorAll("img.is-expanded").forEach((image) => image.classList.remove("is-expanded"));
-    });
-    transcriptViewer.querySelectorAll(".markdown-viewer img").forEach((image) => {
-      image.tabIndex = 0;
-      image.addEventListener("click", () => image.classList.toggle("is-expanded"));
-      image.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          image.classList.toggle("is-expanded");
-        }
-      });
+      transcriptContent?.querySelectorAll("img.is-expanded").forEach((image) => image.classList.remove("is-expanded"));
     });
   }
-  const deleteLectureDialog = document.getElementById("deleteLectureDialog");
-  const openDeleteLectureDialog = document.getElementById("openDeleteLectureDialog");
-  const cancelDeleteLecture = document.getElementById("cancelDeleteLecture");
-  if (deleteLectureDialog && openDeleteLectureDialog && cancelDeleteLecture) {
-    openDeleteLectureDialog.addEventListener("click", () => deleteLectureDialog.showModal());
-    cancelDeleteLecture.addEventListener("click", () => deleteLectureDialog.close());
-    deleteLectureDialog.addEventListener("click", (event) => {
-      if (event.target === deleteLectureDialog) deleteLectureDialog.close();
+  const bindConfirmDialog = (dialogId, openId, cancelId) => {
+    const dialog = document.getElementById(dialogId);
+    const open = document.getElementById(openId);
+    const cancel = document.getElementById(cancelId);
+    if (!dialog || !open || !cancel) return;
+    open.addEventListener("click", () => dialog.showModal());
+    cancel.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) dialog.close();
     });
-  }
+  };
+  bindConfirmDialog("deleteLectureDialog", "openDeleteLectureDialog", "cancelDeleteLecture");
+  bindConfirmDialog("reprocessSlidesDialog", "openReprocessSlidesDialog", "cancelReprocessSlides");
+  bindConfirmDialog("defaultSlideVersionDialog", "openDefaultSlideVersionDialog", "cancelDefaultSlideVersion");
   const originalVideoDialog = document.getElementById("originalVideoDialog");
   const openOriginalVideoDialog = document.getElementById("openOriginalVideoDialog");
   const closeOriginalVideoDialog = document.getElementById("closeOriginalVideoDialog");

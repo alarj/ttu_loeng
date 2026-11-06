@@ -149,6 +149,7 @@ class Worker:
 
     def _command(self, context: dict[str, Any]) -> list[str]:
         lecture_id = str(context["lecture_processing_id"])
+        operation_id = str(context["operation_id"])
         output_root = self.settings.runtime_root / "outputs" / "jobs" / lecture_id
         if context["operation_type"] == "asr":
             return [
@@ -171,6 +172,12 @@ class Worker:
                 str(self.settings.cpu_threads),
             ]
         if context["operation_type"] == "slides":
+            sensitivity_level = int(context.get("slide_sensitivity_level") or 0)
+            if not -3 <= sensitivity_level <= 3:
+                raise ValueError("Slide sensitivity level must be between -3 and +3")
+            change_distance = self.settings.slide_change_distance - (sensitivity_level * 0.003)
+            if change_distance <= 0:
+                raise ValueError("Slide change distance must be positive")
             command = [
                 "lecture-slides",
                 "process",
@@ -180,11 +187,15 @@ class Worker:
                 "--transcript",
                 str(output_root / "transcript" / self.settings.asr_configuration_id / "transcript.json"),
                 "--output-dir",
-                str(output_root / "slides"),
+                str(output_root / "slides" / operation_id),
                 "--coarse-seconds",
                 str(self.settings.slide_coarse_seconds),
                 "--refine-seconds",
                 str(self.settings.slide_refine_seconds),
+                "--change-distance",
+                f"{change_distance:.6f}",
+                "--sensitivity-level",
+                str(sensitivity_level),
             ]
             if context.get("slides_relative_path"):
                 command.extend(["--slides-input", str(self.settings.runtime_root / context["slides_relative_path"])])

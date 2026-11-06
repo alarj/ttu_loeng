@@ -14,7 +14,7 @@ from typing import Any, Callable, Iterable
 from lecture_notes.echo360 import EchoClient, EchoError, build_resolver_manifest
 from lecture_notes.manifests import atomic_write_json
 from lecture_notes.slides import select_video_source_by_quality
-from lecture_notes.web.models import Course, Lecture, StoredUpload, UploadInput
+from lecture_notes.web.models import Course, Lecture, SlideVersion, StoredUpload, UploadInput
 from lecture_notes.web.ords import OrdsClient, OrdsError
 
 
@@ -123,7 +123,7 @@ class LectureService:
                         created_paths.append(stored.absolute_path.parent)
                         transaction.insert_upload(lecture_id, stored)
                     asr_id, asr_key = transaction.insert_operation(lecture_id, "asr", None)
-                    slides_id, slides_key = transaction.insert_operation(lecture_id, "slides", asr_id)
+                    slides_id, slides_key = transaction.insert_operation(lecture_id, "slides", asr_id, 0)
                     registrations.append(
                         {
                             "lecture_id": lecture_id,
@@ -218,6 +218,28 @@ class LectureService:
     def get_lecture(self, lecture_id: int) -> Lecture:
         return self._with_statuses(self.repository.get_lecture(lecture_id))
 
+    def reprocess_slides(self, lecture_id: int, sensitivity_level: int) -> int:
+        if sensitivity_level not in range(-3, 4):
+            raise ValidationError("INVALID_SENSITIVITY", "Slide sensitivity level must be between -3 and +3")
+        lecture = self.repository.get_lecture(lecture_id)
+        operation_id, idempotency_key, previous_job_id = self.repository.create_slide_reprocessing(
+            lecture_id,
+            sensitivity_level,
+        )
+        try:
+            response = self.ords.register_job(
+                operation_id=operation_id,
+                operation_type="slides",
+                idempotency_key=idempotency_key,
+                lecture_processing_id=lecture_id,
+                previous_job_id=previous_job_id,
+            )
+            self.repository.set_operation_registered(operation_id, int(response["job_id"]))
+        except (OrdsError, KeyError, TypeError, ValueError) as exc:
+            code = exc.code if isinstance(exc, OrdsError) else "INVALID_ORDS_RESPONSE"
+            self.repository.set_registration_error(operation_id, code, str(exc))
+        return lecture.lecture_processing_id
+
     def _with_statuses(self, lecture: Lecture) -> Lecture:
         operations = []
         for operation in lecture.operations:
@@ -233,22 +255,70 @@ class LectureService:
         lecture.operations = operations
         return lecture
 
-    def result_path(self, lecture_id: int) -> Path | None:
+    def slide_versions(self, lecture: Lecture) -> list[SlideVersion]:
+        versions: list[SlideVersion] = []
+        for operation in lecture.operations:
+            if operation.operation_type != "slides" or operation.local_outcome != "SUCCEEDED":
+                continue
+            path = self._slide_result_path(lecture.lecture_processing_id, operation.operation_id)
+            if path is None:
+                continue
+            versions.append(
+                SlideVersion(
+                    operation_id=operation.operation_id,
+                    attempt_number=operation.attempt_number,
+                    sensitivity_level=operation.slide_sensitivity_level,
+                    markdown_path=path,
+                    is_default=operation.operation_id == lecture.default_slides_operation_id,
+                )
+            )
+        return sorted(versions, key=lambda version: version.attempt_number, reverse=True)
+
+    def selected_slide_version(
+        self,
+        lecture: Lecture,
+        requested_operation_id: int | None = None,
+    ) -> SlideVersion | None:
+        versions = self.slide_versions(lecture)
+        if requested_operation_id is not None:
+            return next((version for version in versions if version.operation_id == requested_operation_id), None)
+        return next((version for version in versions if version.is_default), versions[0] if versions else None)
+
+    def result_path(self, lecture: Lecture, version: SlideVersion | None = None) -> Path | None:
+        if version is not None:
+            return version.markdown_path
+        selected = self.selected_slide_version(lecture)
+        if selected is not None:
+            return selected.markdown_path
+        lecture_id = lecture.lecture_processing_id
         base = self.runtime_root / "outputs" / "jobs" / str(lecture_id)
-        candidates = [
-            base / "slides" / "transcript_with_slides.md",
-            base / "transcript" / "taltechnlp-turbo-et-verbatim-2604-int8" / "transcript.md",
-        ]
+        candidates = [base / "transcript" / "taltechnlp-turbo-et-verbatim-2604-int8" / "transcript.md"]
         return next((path for path in candidates if path.is_file()), None)
 
-    def publishable_result_path(self, lecture_id: int) -> Path | None:
-        path = self.runtime_root / "outputs" / "jobs" / str(lecture_id) / "slides" / "transcript_with_slides.md"
-        return path if path.is_file() else None
+    def _slide_result_path(self, lecture_id: int, operation_id: int) -> Path | None:
+        base = self.runtime_root / "outputs" / "jobs" / str(lecture_id) / "slides"
+        versioned = base / str(operation_id) / "transcript_with_slides.md"
+        if versioned.is_file():
+            return versioned
+        legacy = base / "transcript_with_slides.md"
+        return legacy if legacy.is_file() else None
 
-    def slide_image_path(self, lecture_id: int, filename: str) -> Path | None:
+    def publishable_result_path(self, lecture: Lecture, version: SlideVersion | None = None) -> Path | None:
+        selected = version or self.selected_slide_version(lecture)
+        return selected.markdown_path if selected is not None else None
+
+    def slide_image_path(
+        self,
+        lecture: Lecture,
+        filename: str,
+        version: SlideVersion | None = None,
+    ) -> Path | None:
         if Path(filename).name != filename or Path(filename).suffix.lower() not in DISPLAY_IMAGE_EXTENSIONS:
             return None
-        path = self.runtime_root / "outputs" / "jobs" / str(lecture_id) / "slides" / "images" / filename
+        selected = version or self.selected_slide_version(lecture)
+        if selected is None:
+            return None
+        path = selected.markdown_path.parent / "images" / filename
         return path if path.is_file() else None
 
     def video_stream(self, lecture_id: int, range_header: str | None) -> VideoStream:
@@ -306,29 +376,35 @@ class LectureService:
 
     def public_result(self, public_id: str) -> tuple[Lecture, Path]:
         lecture = self.repository.get_public_lecture(public_id)
-        path = self.publishable_result_path(lecture.lecture_processing_id)
+        path = self.publishable_result_path(lecture)
         if path is None:
             raise KeyError(public_id)
         return lecture, path
 
-    def download_archive(self, lecture_id: int) -> TranscriptArchive:
+    def download_archive(self, lecture_id: int, version_id: int | None = None) -> TranscriptArchive:
         lecture = self.repository.get_lecture(lecture_id)
-        path = self.publishable_result_path(lecture_id)
+        version = self.selected_slide_version(lecture, version_id)
+        path = self.publishable_result_path(lecture, version)
         if path is None:
             raise KeyError(lecture_id)
-        return self._transcript_archive(lecture, path)
+        return self._transcript_archive(lecture, path, version)
 
     def public_download_archive(self, public_id: str) -> TranscriptArchive:
         lecture, path = self.public_result(public_id)
-        return self._transcript_archive(lecture, path)
+        return self._transcript_archive(lecture, path, self.selected_slide_version(lecture))
 
-    def _transcript_archive(self, lecture: Lecture, markdown_path: Path) -> TranscriptArchive:
+    def _transcript_archive(
+        self,
+        lecture: Lecture,
+        markdown_path: Path,
+        version: SlideVersion | None,
+    ) -> TranscriptArchive:
         title = _safe_filename(lecture.lecture_title or "loeng")
         markdown = markdown_path.read_text(encoding="utf-8")
         image_names = list(dict.fromkeys(MARKDOWN_IMAGE_RE.findall(markdown)))
         images: list[tuple[str, Path]] = []
         for image_name in image_names:
-            image_path = self.slide_image_path(lecture.lecture_processing_id, image_name)
+            image_path = self.slide_image_path(lecture, image_name, version)
             if image_path is None:
                 raise ValidationError("MISSING_SLIDE_IMAGE", f"Missing referenced slide image: {image_name}")
             images.append((image_name, image_path))
@@ -349,13 +425,20 @@ class LectureService:
         return TranscriptArchive(filename=f"{title}.zip", body=_stream_chunks(output))
 
     def set_public_sharing(self, lecture_id: int, enabled: bool) -> str | None:
-        self.repository.get_lecture(lecture_id)
-        if enabled and self.publishable_result_path(lecture_id) is None:
+        lecture = self.repository.get_lecture(lecture_id)
+        if enabled and self.publishable_result_path(lecture) is None:
             raise ValidationError(
                 "RESULT_NOT_PUBLISHABLE",
                 "The transcript with slides is not ready",
             )
         return self.repository.set_public_sharing(lecture_id, enabled)
+
+    def set_default_slide_version(self, lecture_id: int, operation_id: int) -> None:
+        lecture = self.repository.get_lecture(lecture_id)
+        version = self.selected_slide_version(lecture, operation_id)
+        if version is None:
+            raise ValidationError("INVALID_SLIDE_VERSION", "Slide version is not available")
+        self.repository.set_default_slides_operation(lecture_id, operation_id)
 
     def soft_delete_lecture(self, lecture_id: int) -> Lecture:
         lecture = self.repository.get_lecture(lecture_id)

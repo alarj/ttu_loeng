@@ -147,7 +147,7 @@ Kasutajale pakutakse seitset suhtelist tundlikkusastet: `−3`, `−2`, `−1`, 
 
 Vaikimisi lävend peab tulema `.env`-i võtmega `SLIDE_CHANGE_DISTANCE`; kinnitatud väärtus on `0.020`. Tehniline tuletus on: `tegelik lävend = SLIDE_CHANGE_DISTANCE − (tundlikkusaste × 0.003)`. See annab praeguse vaikeväärtuse korral astmetele `−3…+3` väärtused `0.029`, `0.026`, `0.023`, `0.020`, `0.017`, `0.014` ja `0.011`.
 
-Praegune kood kasutab küll `160 × 90` RGB-sõrmejälge ja lävendit `0.020`, kuid lävend on veel lähtekoodi konstant. `.env`-ist lugemine, tundlikkusastme edastamine workerile ja versioonitud väljundite loomine ei ole veel teostatud; need tuleb teha koos kasutajaliidese uuesti sidumisega.
+Worker loeb vaikimisi lävendi `.env`-i võtmega `SLIDE_CHANGE_DISTANCE`, arvutab enne töötlemist tegeliku lävendi ning edastab nii selle kui tundlikkusastme slaiditöötlusele. Mõlemad väärtused salvestatakse `slides.json` ja ühendatud Markdowni tehniliste andmete ossa. Slaiditöö väljund on versioonitud kataloogis `outputs/jobs/<lecture_processing_id>/slides/<operation_id>/`, mistõttu uus sidumine ei kirjuta varasemat tulemust üle.
 
 ## 10. Slaidi pealkiri ja tekstituvastus
 
