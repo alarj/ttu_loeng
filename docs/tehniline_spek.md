@@ -2,7 +2,7 @@
 
 ## 1. Dokumendi päritolu
 
-Koostaja: AI (OpenAI Codex) kasutaja kinnitatud MVP2 lähteülesande, projekti olemasoleva koodi ja kontrollitud runtime-artefaktide põhjal. Dokument asendab varasema konspektirakenduse tehnilise spetsifikatsiooni; vana versioon säilib Git-ajaloos märgendi `ver0.1` all.
+Koostaja: AI (OpenAI Codex) kasutaja kinnitatud MVP2 lähteülesande, projekti olemasoleva koodi, kontrollitud runtime-artefaktide ja 3.–4.11.2026 kinnitatud MVP3 arhitektuuri- ning ligipääsuotsuste põhjal. Dokument asendab varasema konspektirakenduse tehnilise spetsifikatsiooni; vana versioon säilib Git-ajaloos märgendi `ver0.1` all ja MVP2 seis märgendi `ver0.2` all.
 
 ## 2. Sisukord
 
@@ -22,12 +22,13 @@ Koostaja: AI (OpenAI Codex) kasutaja kinnitatud MVP2 lähteülesande, projekti o
 - [16. Testimine](#16-testimine)
 - [17. Teostusetapid](#17-teostusetapid)
 - [18. Avatud tehnilised otsused](#18-avatud-tehnilised-otsused)
+- [19. MVP3 veebirakendus ja keskne tööjärjekord](#19-mvp3-veebirakendus-ja-keskne-tööjärjekord)
 
 ## 3. Dokumendi roll
 
-Käesolev dokument kirjeldab faili [`lahteylesanne.md`](lahteylesanne.md) nõuete tehnilist teostust. Slaiditöötluse detailid on failis [`slaiditootlus.md`](slaiditootlus.md).
+Käesolev dokument kirjeldab faili [`lahteylesanne.md`](lahteylesanne.md) nõuete tehnilist teostust. Slaiditöötluse detailid on failis [`slaiditootlus.md`](slaiditootlus.md) ning MVP3 veebirakenduse ja ORDS-i täpne leping failis [`mvp3_veeb_ja_ords.md`](mvp3_veeb_ja_ords.md).
 
-Dokument kirjeldab olemasolevat teostust ja veel kontrollimist vajavaid MVP2 olukordi. See ei anna luba andmebaasi, ühise nginx-serveri, TLS-i ega kõrvalprojektide muutmiseks; sellised muudatused vajavad eraldi kasutaja kinnitust faili [`agents.md`](agents.md) järgi.
+Dokument kirjeldab olemasolevat MVP2 teostust ja MVP3 kinnitatud arhitektuuri. DNS-kirje, nginxi HTTP→HTTPS suunamine, `ttu-loeng.fun-o.eu` nime sisaldav ühine TLS-sertifikaat ja HTTPS-pöördproksi töötavale veebikonteinerile on seadistatud. Dokument ei anna luba andmebaasi ega kõrvalprojektide andmete muutmiseks; sellised muudatused vajavad eraldi kasutaja kinnitust faili [`agents.md`](agents.md) järgi.
 
 ## 4. Kontrollitud lähteolukord
 
@@ -175,7 +176,7 @@ ASR-worker hangib audio ajutisse `work/` kataloogi, kirjutab enne mudelitööd o
 
 ### 7.4. `CHECKING_SLIDES`
 
-Slaidi-worker kontrollib Echo slaidikirjeid, video olemasolu ja videopildi sisu. Video sisu esmane kontroll kasutab vaikimisi 20-sekundilise vahega põhikaadreid ja nende väikese halltoonides pildi sõrmejälgi. Slaidide olek salvestatakse ka siis, kui slaide ei leita või tulemus jääb ebaselgeks.
+Slaidi-worker kontrollib Echo slaidikirjeid, video olemasolu ja videopildi sisu. Video sisu esmane kontroll kasutab vaikimisi 20-sekundilise vahega põhikaadreid ja nende väikese RGB-pildi sõrmejälgi. Slaidide olek salvestatakse ka siis, kui slaide ei leita või tulemus jääb ebaselgeks.
 
 ### 7.5. `EXTRACTING_SLIDES`
 
@@ -225,9 +226,13 @@ Slaiditöötlus kasutab FFmpegi, Tesseracti, PyMuPDF-i, LibreOffice'i käsureave
 
 Pealkiri on slaidi peamine, kuid mitte ainus tunnus. Pildisarnasus ja slaidide järjekord väldivad sama pealkirjaga erinevate slaidide ühendamist. Animatsiooni vaheetappe ei nummerdata eraldi slaidideks.
 
-Põhivideo kontroll ei käivita igal kaadril OCR-i. Vaikimisi võrreldakse 20-sekundilise vahega põhikaadrite 32 × 18 halltoonides sõrmejälgi. Muutunud põhivahemiku sees kasutatakse vaikimisi kahe-sekundilist täpsustussammu. OCR piirdub esmalt leitud stabiilse slaidikandidaadi ülemise pealkirjaalaga; kogu slaidi OCR on varuvariant ebaselge vastavuse korral.
+Põhivideo kontroll ei käivita igal kaadril OCR-i. Vaikimisi võrreldakse 20-sekundilise vahega põhikaadrite 160 × 90 RGB-sõrmejälgi. Muutunud põhivahemiku sees kasutatakse vaikimisi kahe-sekundilist täpsustussammu. OCR piirdub ilma eraldi slaidifailita leitud stabiilse slaidikandidaadi ülemise pealkirjaalaga. Eraldi slaidifaili olemasolul loetakse stabiilselt videokaadrilt ka kogu nähtav tekst ning võrreldakse seda PDF-i tekstikihiga. Selge tekstikattuvus peab eristuma järgmisest võimalikust vastest; alles seejärel võib kasutada PDF-i lehekülge ja selle pealkirja. Kontrollimata video-OCR-i teksti transkripti slaidipealkirjana ei väljastata.
 
 Kõik detailid, terminid, olekud, vastavuse kontroll ja testjuhtumid on failis [`slaiditootlus.md`](slaiditootlus.md).
+
+Slaidimuutuse vaikimisi lävend peab tulema `.env`-ist, mitte lähtekoodi konstandist. Selle konfiguratsioonivõtme nimi on `SLIDE_CHANGE_DISTANCE` ja kinnitatud vaikeväärtus on `0.020`. Uuesti sidumise kasutajavalik on täisarvuline tundlikkusaste `−3…+3`; aste `0` kasutab vaikeväärtust, iga positiivne aste vähendab tegelikku lävendit `0.003` võrra ning iga negatiivne aste suurendab seda `0.003` võrra. Seega on tegelikud väärtused vastavalt `0.029`, `0.026`, `0.023`, `0.020`, `0.017`, `0.014` ja `0.011`. Neid kümnendväärtusi ei näidata kasutajaliideses.
+
+Slaidide uuesti sidumine on uus sama loengutöötluse `slides`-toiming, mis sõltub olemasolevast edukast ASR-i toimingust ega loo uut ASR-i toimingut. Toiming peab säilitama kasutaja valitud tundlikkusastme, tegeliku lävendi ning kasutatud konfiguratsiooni manifestis. Igal toimingul on oma väljundkataloog ja ühendatud Markdown; varasemat slaiditulemust ei kirjutata üle.
 
 ## 10. Transkripti ja slaidide ühendamine
 
@@ -294,6 +299,8 @@ Korduvkasutuse võti sisaldab sisendi kontrollsummat ja tulemust mõjutavat konf
 
 Slaiditöötluse või Markdown-vormistuse muutmine ei käivita ASR-i uuesti.
 
+Uuesti sidumine loob sama loengu jaoks järgmise `slides`-toimingu katse. Selle korduvkasutuse võti sisaldab lisaks videole, valikulisele slaidifailile ja slaiditöötluse versioonile ka tundlikkusastet ning sellest tuletatud tegelikku muutuselävendit. Slaiditulemuse väljunditee peab olema seotud toimingu identifikaatori või katse numbriga, mitte ainult loengu identifikaatoriga.
+
 ## 13. Konteinerid ja ressursikasutus
 
 MVP2 kasutab vähemalt järgmisi rolle:
@@ -343,7 +350,7 @@ Slaidide puudumine või slaiditöötluse viga ei muuda edukat transkriptsiooni n
 - Slaidipildid ja transkript säilivad püsiva väljundina.
 - Enne veebiliidese avaldamist tuleb eraldi hinnata loengumaterjalide säilitamise ja jagamise õigusi.
 
-MVP2 ei vaja andmebaasi. Kui püsiv andmebaas osutub hiljem vajalikuks, kasutatakse Oracle Always Free andmebaasi ning projektile eraldatud oma schemat. Ristkasutus teise projekti schemaga vajab eraldi põhjendust ja dokumentatsiooni mõlemas projektis.
+MVP2 töötlusmootor ei vaja andmebaasi. MVP3 veebirakendus kasutab Oracle Always Free andmebaasis projektile eraldatud oma skeemi loengutöötluste, ORDS-i tööseoste ja üleslaadimiste hoidmiseks. FastAPI ja worker ühenduvad sama rakenduse skeemiga otse `python-oracledb` ühenduste pooli kaudu; ORDS-i HTTP API-d kasutatakse ainult serveriülese tööjärjekorra jaoks. Mahukad failid jäävad fikseeritud kataloogistruktuuriga failisüsteemi ja neid kirjeldavad olemasolevad manifestid. Andmemudel on failis [`../db/erd.md`](../db/erd.md).
 
 ## 16. Testimine
 
@@ -430,6 +437,34 @@ Loengu 8.1 kontroll määras praegused tööväärtused. Enne nende üldiseks so
 5. milline videoresolutsioon sobib tuvastuseks ja milline lõpliku pildi allikaks;
 6. kuidas märgitakse osaliselt kattuv või erineva versiooniga slaidifail;
 7. MVP2 käsurea lõplik leping;
-8. võimalik veebiliidese hostinimi ja selle TLS-sertifikaadi katvus.
+8. järgmises etapis lisatava masinliidese autentimise viis.
 
 Neid otsuseid ei tehta dokumenteerimata oletuse ega ühe näite põhjal.
+
+## 19. MVP3 veebirakendus ja keskne tööjärjekord
+
+MVP3 lisab vähemalt kaks püsivat konteinerit: FastAPI veebiteenuse ja ühe püsiva workeri. Worker sisaldab nii ASR-i kui ka slaiditöötluse registreeritud adapterit ning kasutab hosti püsivaid runtime- ja mudelivahemälu volume'eid. Ühegi töö jaoks ei ehitata uut image'it ega käivitata uut töötluskonteinerit.
+
+Ressursimahukad tööliigid on ORDS-is `application_code=ttu_loeng` all `asr` ja `slides`. Sama loengu slaiditöö `previous_job_id` viitab selle loengu ASR-i ORDS-i `job_id` väärtusele. ORDS on ainus järjekorra ja käivitamisloa autoriteet; rakendus ei pea kohalikku järjekorda. Rakenduse püsiv olek seob loengu, kasutaja slaidifaili ja ORDS-i tööde ID-d, kuid seda ei kasutata järgmise töö valimiseks.
+
+Eduka ASR-i järel võib administraator luua kinnitatud „Seo slaididega uuesti” tegevusega täiendava `slides`-toimingu. See kasutab sama ASR-i `previous_job_id` väärtust nagu esimene slaiditöö, kuid on uus ORDS-i töö ja uus rakenduse toiming. Toimingu sisendina säilitatakse `BACKGROUND_OPERATIONS.SLIDE_SENSITIVITY_LEVEL`: `0` on „vaikimisi” ning muud lubatud väärtused on `−3…−1` ja `+1…+3`. Worker tuletab sellest `.env`-i `SLIDE_CHANGE_DISTANCE` väärtuse suhtes tegeliku lävendi. Iga slaiditöö väljund asub kataloogis `outputs/jobs/<lecture_processing_id>/slides/<operation_id>/`. Loengu detailvaade näitab iga edukat slaiditulemust eraldi versioonina, avab `LECTURE_PROCESSINGS.DEFAULT_SLIDES_OPERATION_ID` osutatud versiooni või selle puudumisel viimase lõpetatud versiooni ning administraator saab valitud lõpetatud versiooni kinnitusmodaliga vaikeversiooniks määrata. Tavakasutaja näeb ja saab valida kõiki lõpetatud versioone; allalaadimine ja avalik otselink kasutavad vaikeversiooni.
+
+ORDS-i järjekorra API autentimine kasutab OAuth `client_credentials` voogu. `ttu_loeng` rakendusel on oma OAuth-klient; kliendi ID ja saladus tulevad `.env` failist ning access tokenit hoitakse ainult mälus. Kõik järjekorra API kutsed kasutavad Bearer-tokenit.
+
+Kasutaja saab korraga valida mitu loengut ja siduda iga loenguga oma valikulise slaidifaili. Veebiliides kuvab iga loengu ASR-i, sõltuva slaiditöö ja valmis tulemuse. Iga taustatöö olekut näidatakse ühe ORDS-i olekumärgisega; dubleeriva kohaliku tulemuse teksti asemel kuvatakse `BACKGROUND_OPERATIONS.LOCAL_STARTED_AT` ja `LOCAL_COMPLETED_AT`. UTC-ajad edastatakse ISO 8601 kujul brauserile, mis teisendab need oma ajavööndisse ja kuvab 24-tunnisel kujul `dd.mm.yyyy hh:mm:ss`. ORDS-i olek on järjekorra ja täitmise tõeallikas; rakenduse artefaktide olemasolu ja sisemised vead on rakenduse tõeallikas.
+
+Brauserikasutaja autentimine toimub Google Identity Services ID-tokeniga samal põhimõttel nagu serveri `fun-o.eu` ja `haldus` rakendustes. Backend kontrollib tokenit Google'i `tokeninfo` teenuse kaudu, võrdleb `aud` väärtust `GOOGLE_CLIENT_ID` seadistusega ning nõuab kinnitatud e-posti aadressi. Esmakordsel edukal sisselogimisel luuakse `USER` rolliga `APP_USERS` kirje; rakendus ei halda kohalikke paroole. Aegunud või puuduva sessiooniga kaitstud HTML-päring suunatakse avalehe puhtale Google'i sisselogimisvaatele. `USER` näeb ja laadib alla kõigi aktiivsete tööde tulemusi, kuid uusi töid ja avalikke jagamislinke haldab ainult `ADMIN`. Rolli `ADMIN` määramine toimub otse andmebaasis. Avalikku jagamist pakutakse ja `LECTURE_PROCESSINGS.public_id` saab väärtustada alles pärast slaididega ühendatud `slides/transcript_with_slides.md` valmimist. Sisselogitud ja anonüümne allalaadimine väljastavad sama ZIP-paketi ega lange tagasi ASR-i toortranskriptile; anonüümne kasutaja ei näe tööde nimekirja. ZIP luuakse päringu ajal, selle juurkataloogi ja Markdown-faili nimi tuletatakse failisüsteemi jaoks turvaliseks tehtud loengu nimest ning `images/` sisaldab kõiki Markdownis viidatud slaidipilte. Paketti ei säilitata püsiva artefaktina.
+
+Markdown-vaates teisendatakse transkriptsioonisegmentide ajavahemikud videolinkideks. Link juhib ühe modali ülaosas paikneva HTML5-videopleieri vastava segmendi algusajale; segmendi lõppaeg ei peata videot. Videoallikaks valitakse Echo360 väikseim esitusvariant. Kuna Echo meediaallikas nõuab avaliku kursusesessiooni küpsist, ei anta meedia URL-i brauserile otse. Autenditud videoendpoint vahendab brauseri ühte baitvahemikku kirjeldava `Range`-päise Echo360-le ja tagastab `206 Partial Content` vastuse voona. Videot ei kirjutata runtime-kataloogi ega puhverdata rakenduses tervikuna.
+
+Loengu detailvaate eraldi videonupp kasutab sama autenditud videoendpoint'i ja avab video oma modalis; sellega ei avata Echo360 kasutajaliidest ega nõuta brauserilt Echo küpsist. Modalis kuvatakse lisaks algne `https://echo360.org.uk/lesson/<lesson-id>/classroom` URL koos selgitusega, et Echo classroom-vaate avamiseks peab brauseris juba olema kehtiv Echo360 sessioon. Videomodali sulgemisel peatatakse esitus ja eemaldatakse pleieri allikas.
+
+Sisselogitud kasutaja avaleht rühmitab loengud `SUBMISSIONS.ECHO_CANONICAL_SECTION_ID` järgi kursusteks. Kursuse kuvatav nimi pärineb `SUBMISSIONS.COURSE_TITLE` väljast ning kursused järjestatakse selle järgi. Valitud kursuse loengud järjestatakse `LECTURE_PROCESSINGS.LECTURE_TITLE` järgi ja kuvatakse kompaktses nimekirjas. Nii loengute nimekirjas kui detailvaates kuvatakse andmebaasikirje lisamisaja asemel Echo360-st saadud tegelik loengu toimumisaeg `LECTURE_PROCESSINGS.LECTURE_START_AT`, et sama pealkirjaga loenguid saaks eristada. Administraator võib detailvaatest soft delete'iga sulgeda konkreetse loengutöötluse alles pärast loengu nime kuvavas modalis `Jah` valimist; see ei sulge kursuse teisi loenguid ega submission'it.
+
+Loengute lisamise leht pakub olemasolevaid aktiivseid kursusi nime järgi ning eraldi välja uue Echo360 `/public` URL-i sisestamiseks. Dropdowni väärtus on kanoonilise sektsiooni ID, mitte URL. Backend leiab valitud kursuse viimase aktiivse submission'i salvestatud URL-i. Mõlemal sisendil on eraldi „Kuva loengud” nupp, mis on aktiivne ainult vastava valiku või sisendi olemasolul.
+
+FastAPI HTML-marsruudid kasutavad eraldi teenusekihti. Järgmise etapi JSON API peab kasutama samu teenuseid, et tööde loomise, õiguste, ORDS-i registreerimise ja tulemuste leidmise reeglid ei dubleeruks. Masinliidese autentimisviis ei kuulu käesolevasse etappi.
+
+ORDS-i claim'i, heartbeat'i ja OAuth-tokeni uuendamise intervallid ning kasutajaliidese olekuvärskendus tulevad `.env` konfiguratsioonist. Vaikeväärtused on vastavalt 300, 300, 60 ja 30 sekundit.
+
+Avalik aadress on `https://ttu-loeng.fun-o.eu`. DNS-kirje, nginxi HTTP→HTTPS suunamine, nime sisaldav ühine TLS-sertifikaat ja HTTPS-pöördproksi `ttu-loeng-web:8000` konteinerile on seadistatud. Täielik leping ja etapistus on failis [`mvp3_veeb_ja_ords.md`](mvp3_veeb_ja_ords.md).

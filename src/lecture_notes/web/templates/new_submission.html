@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ t("new_submission") }} – {{ t("app_name") }}{% endblock %}
+{% block header_actions %}
+  <a class="button-link secondary-button compact-view header-button" href="/">← {{ t("back") }}</a>
+{% endblock %}
+{% block content %}
+<section class="card submission-card">
+  <h2>{{ t("new_submission") }}</h2>
+  {% if message %}<div class="message error">{{ message }}</div>{% endif %}
+  <form class="course-source-form" method="post" action="/submissions/resolve">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="canonical_section_id">{{ t("existing_course") }}</label>
+    <div class="form-row">
+      <select id="canonical_section_id" name="canonical_section_id" data-resolve-source>
+        <option value="">{{ t("select_course") }}</option>
+        {% for course in courses %}
+        <option value="{{ course.echo_canonical_section_id }}"{% if selected_course_id == course.echo_canonical_section_id %} selected{% endif %}>{{ course.course_title }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" data-resolve-button disabled>{{ t("resolve") }}</button>
+    </div>
+  </form>
+  <form class="course-source-form" method="post" action="/submissions/resolve">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="public_url">{{ t("echo_url") }}</label>
+    <div class="form-row">
+      <input id="public_url" name="public_url" type="url" required value="{{ manual_public_url or '' }}" placeholder="https://echo360.org.uk/section/.../public" data-resolve-source>
+      <button type="submit" data-resolve-button disabled>{{ t("resolve") }}</button>
+    </div>
+  </form>
+</section>
+{% if resolver %}
+<section class="card submission-card lecture-selection-card">
+  <h2>{{ t("select_lectures") }}</h2>
+  <form id="createSubmissionForm" method="post" action="/submissions" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="submission_request_id" value="{{ submission_request_id }}">
+    <input type="hidden" name="public_url" value="{{ public_url }}">
+    <div class="lecture-choices">
+      {% for lesson in resolver.lessons %}
+      <article class="lecture-choice{% if lesson.recording_status != 'available' %} is-disabled{% endif %}">
+        <label class="lecture-select">
+          <input type="checkbox" name="lesson_id" value="{{ lesson.lesson_id }}" {% if lesson.recording_status != 'available' %}disabled{% endif %}>
+          <span class="lecture-choice-line">
+            <span class="lecture-choice-name">{{ lesson.display_name or lesson.name or lesson.lesson_id }}</span>
+            {% if lesson.start_time_utc %}<time class="local-time lecture-choice-time" datetime="{{ lesson.start_time_utc }}">{{ lesson.start_time_utc }}</time>{% endif %}
+            <span class="lecture-choice-status">{{ t("available") if lesson.recording_status == 'available' else t("unavailable") }}</span>
+          </span>
+        </label>
+        {% if lesson.recording_status == 'available' %}
+        <div class="slide-upload">
+          <span class="slide-file-name" aria-live="polite"></span>
+          <input class="visually-hidden slide-file-input" id="slides_{{ lesson.lesson_id }}" name="slides_{{ lesson.lesson_id }}" type="file" accept=".pdf,.ppt,.pptx">
+          <label class="button-link secondary-button compact-view slide-upload-button" for="slides_{{ lesson.lesson_id }}">{{ t("add_slides") }}</label>
+        </div>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+    <div class="form-actions">
+      <button id="submitJobsButton" type="submit">{{ t("submit_jobs") }}</button>
+      <div id="submissionProgress" class="submission-progress" role="status" aria-live="polite" hidden>
+        <span class="loading-spinner" aria-hidden="true"></span>
+        <span>{{ t("submission_in_progress") }}</span>
+      </div>
+    </div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}
+

@@ -1,4 +1,56 @@
 services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: ttu-loeng-web
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      TTU_LOENG_REPO_ROOT: /app
+      TTU_LOENG_RUNTIME_ROOT: ${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
+    user: "${TTU_LOENG_UID:-1000}:${TTU_LOENG_GID:-1000}"
+    volumes:
+      - ${TTU_LOENG_RUNTIME_ROOT:?Set TTU_LOENG_RUNTIME_ROOT to a writable host directory}:${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
+      - ${ORACLE_CONFIG_DIR:?Set ORACLE_CONFIG_DIR to the Oracle wallet directory}:${ORACLE_CONFIG_DIR}:ro
+    expose:
+      - "8000"
+    restart: unless-stopped
+    networks:
+      - funo_net
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+      args:
+        FASTER_WHISPER_VERSION: ${FASTER_WHISPER_VERSION:?Set FASTER_WHISPER_VERSION in .env}
+        PYAV_VERSION: ${PYAV_VERSION:?Set PYAV_VERSION in .env}
+        PYMUPDF_VERSION: ${PYMUPDF_VERSION:?Set PYMUPDF_VERSION in .env}
+        PILLOW_VERSION: ${PILLOW_VERSION:?Set PILLOW_VERSION in .env}
+    container_name: ttu-loeng-worker
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      TTU_LOENG_REPO_ROOT: /app
+      TTU_LOENG_RUNTIME_ROOT: ${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
+      HOME: ${TTU_LOENG_HOME:-/runtime/home}
+      USER: ${TTU_LOENG_USER:-ttu-loeng}
+      LOGNAME: ${TTU_LOENG_LOGNAME:-ttu-loeng}
+      HF_HOME: ${TTU_LOENG_HF_HOME:-/runtime/models/huggingface}
+      HF_HUB_CACHE: ${TTU_LOENG_HF_HUB_CACHE:-/runtime/models/huggingface/hub}
+      OMP_NUM_THREADS: ${ASR_CPU_THREADS:-3}
+    user: "${TTU_LOENG_UID:-1000}:${TTU_LOENG_GID:-1000}"
+    cpus: ${ASR_WORKER_CPUS:-3.0}
+    volumes:
+      - ${TTU_LOENG_RUNTIME_ROOT:?Set TTU_LOENG_RUNTIME_ROOT to a writable host directory}:${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
+      - ${ORACLE_CONFIG_DIR:?Set ORACLE_CONFIG_DIR to the Oracle wallet directory}:${ORACLE_CONFIG_DIR}:ro
+    restart: unless-stopped
+    networks:
+      - funo_net
+
   importer:
     build:
       context: .
@@ -66,3 +118,8 @@ services:
       - ${TTU_LOENG_RUNTIME_ROOT:?Set TTU_LOENG_RUNTIME_ROOT to a writable host directory}:${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
       - ./docs/initial_materials:/materials:ro
     command: ["--help"]
+
+networks:
+  funo_net:
+    external: true
+    name: funo_net

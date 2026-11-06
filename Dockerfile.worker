@@ -1,0 +1,41 @@
+FROM python:3.12-slim-bookworm
+
+ARG FASTER_WHISPER_VERSION
+ARG PYAV_VERSION
+ARG PYMUPDF_VERSION
+ARG PILLOW_VERSION
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ffmpeg \
+        tesseract-ocr \
+        tesseract-ocr-eng \
+        tesseract-ocr-est \
+        libreoffice-impress-nogui \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY pyproject.toml ./
+
+RUN test -n "$FASTER_WHISPER_VERSION" \
+    && test -n "$PYAV_VERSION" \
+    && test -n "$PYMUPDF_VERSION" \
+    && test -n "$PILLOW_VERSION" \
+    && pip install --no-cache-dir \
+        "av==${PYAV_VERSION}" \
+        "faster-whisper==${FASTER_WHISPER_VERSION}" \
+        "PyMuPDF==${PYMUPDF_VERSION}" \
+        "Pillow==${PILLOW_VERSION}" \
+        "oracledb>=2.5,<4"
+
+COPY src ./src
+COPY benchmarks ./benchmarks
+COPY hotwords ./hotwords
+
+RUN pip install --no-cache-dir --no-deps .
+
+CMD ["ttu-loeng-worker"]

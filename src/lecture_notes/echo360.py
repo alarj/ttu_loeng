@@ -170,6 +170,33 @@ class EchoClient:
             "source_query_persisted": False,
         }
 
+    def open_media_stream(self, source_url: str, range_header: str | None = None):
+        parsed = urlsplit(source_url)
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname is None
+            or not (parsed.hostname == "echo360.org.uk" or parsed.hostname.endswith(".echo360.org.uk"))
+        ):
+            raise EchoError("MEDIA_SOURCE_NOT_ALLOWED", "Meediaallikas ei kuulu lubatud Echo360 HTTPS domeeni alla.")
+
+        headers = {
+            "Accept": "video/*",
+            "User-Agent": f"ttu-loeng-importer/{RESOLVER_VERSION}",
+        }
+        if range_header:
+            headers["Range"] = range_header
+        try:
+            return self._opener.open(
+                Request(source_url, headers=headers),
+                timeout=self.timeout_seconds,
+            )
+        except HTTPError as exc:
+            if exc.code == 416:
+                return exc
+            raise EchoError("MEDIA_STREAM_FAILED", f"Echo360 videovoo avamine ebaõnnestus: HTTP {exc.code}") from exc
+        except (URLError, TimeoutError, OSError) as exc:
+            raise EchoError("MEDIA_STREAM_FAILED", f"Echo360 videovoo avamine ebaõnnestus: {type(exc).__name__}") from exc
+
     def _get_json(self, path: str) -> dict[str, Any]:
         try:
             response = self._open(urljoin(BASE_URL, path), accept="application/json")

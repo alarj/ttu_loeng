@@ -93,7 +93,7 @@ Teostatud kontroll toimub enne slaidide täpset ajastamist:
 1. loetakse Echo360 slaidilipud ja eraldi slide deck'i kirjed;
 2. kontrollitakse esitlusvideo olemasolu ja meediatüüpi;
 3. võetakse kogu videost vaikimisi iga 20 sekundi järel põhikaader;
-4. iga põhikaader vähendatakse 32 × 18 halltooniga punktini ning sellest moodustatakse pildi digitaalne sõrmejälg;
+4. iga põhikaader vähendatakse 160 × 90 RGB-punktini ning sellest moodustatakse pildi digitaalne sõrmejälg;
 5. võrreldakse põhikaadrite stabiilsust, paigutust ja muutusi;
 6. OCR-i ei käivitata kõigil põhikaadritel; ebaselge slaidide olemasolu korral kontrollitakse valitud stabiilsete kandidaatide pealkirjaala.
 
@@ -109,7 +109,7 @@ Echo lipud, video meediatüüp ja automaatse pildikontrolli tulemus säilitataks
 
 ## 9. Videost slaidivahetuste leidmine
 
-### 9.1. Teostatud algoritm `video-slides-v2`
+### 9.1. Teostatud algoritm `video-slides-v5`
 
 1. Video jagatakse vaikimisi 20-sekundilisteks põhivahemikeks.
 2. Iga põhivahemiku alguse ja lõpu põhikaadrit võrreldakse pildi digitaalse sõrmejälje abil.
@@ -122,22 +122,32 @@ Echo lipud, video meediatüüp ja automaatse pildikontrolli tulemus säilitataks
 
 Põhikaadri vaikimisi samm on 20 sekundit ja muutunud vahemiku täpsustussamm kaks sekundit. Mõlemad väärtused peavad olema konfiguratsioonis muudetavad ning salvestatakse slaidimanifesti.
 
-Analüüsiks vähendatakse pilt 32 × 18 halltooniga punktini. Kahe pildi erinevus on samas asukohas olevate punktide heleduse absoluutsete erinevuste keskmine, mis jagatakse 255-ga: `0` tähendab identseid pilte ning `1` musta ja valge pildi maksimaalset erinevust.
+Analüüsiks vähendatakse pilt 160 × 90 RGB-punktini. Kahe pildi erinevus on samas asukohas olevate punase, rohelise ja sinise kanali väärtuste absoluutsete erinevuste keskmine, mis jagatakse 255-ga: `0` tähendab identseid pilte ning `1` maksimaalset kanalierinevust. Suurem sõrmejälg säilitab sama kujundusega slaidide teksti- ja joonisevahed, mis 32 × 18 kujul kaduma läksid; RGB säilitab lisaks värvierinevuse.
 
 Teadaolev piirang: kui slaid ilmub ja kaob täielikult ühe 20-sekundilise põhivahemiku sees ning järgmine põhikaader kujutab taas sama slaidi, võib vahepealne slaid jääda leidmata. Sama piirang kehtib väga lühikese slaidi kohta. Kasutaja hinnangul on kontrollitavate loengute puhul alla 20 sekundi näidatava slaidi tõenäosus väga väike.
 
-### 9.2. Varasem kontrollversioon `video-slides-v1`
+### 9.2. Varasemad kontrollversioonid
 
 Varasem kood võttis kogu videost kaadreid kahe-sekundilise sammuga, kirjutas need ajutiselt kettale ning otsis nende seast pildimuutusi. See versioon ei ole enam praeguses koodis kasutusel; selle kirjeldus ja kontrolltulemused säilivad dokumentatsioonis ning Git-ajaloos võrdlusena.
 
-Versioonis `video-slides-v1` kasutusele võetud ja versioonis `video-slides-v2` edasi kasutatavad kontrollväärtused on:
+Versioonis `video-slides-v1` kasutusele võetud ning hiljem kontrollitud tööväärtused on:
 
-- uue stabiilse oleku kandidaat: erinevus eelmisest valitud olekust vähemalt `0,035`;
+- uue stabiilse oleku kandidaat: erinevus eelmisest valitud olekust vähemalt `0,020`;
 - stabiilsus järgmise proovikaadriga: erinevus kuni `0,025`;
 - muutumatu pildi kordus: erinevus kuni `0,012`;
 - sama pealkirjaga animatsiooniseis: erinevus kuni `0,18`.
 
-`video-slides-v2` salvestab kasutatud põhikaadri- ja täpsustusvahemikud ning pildierinevuse kontrollväärtused oma slaidimanifesti. Väärtused toimisid loengu 8.1 kontrollis, kuid nende sobivust tuleb hinnata ka pikema ja teistsuguse kujundusega loengu põhjal.
+Versioon `video-slides-v5` salvestab kasutatud põhikaadri- ja täpsustusvahemikud ning pildierinevuse kontrollväärtused oma slaidimanifesti. Väärtused toimisid loengu 8.1 kontrollis, kuid nende sobivust tuleb hinnata ka pikema ja teistsuguse kujundusega loengu põhjal.
+
+### 9.3. Uuesti sidumine ja tundlikkusaste
+
+Kinnitatud kasutajaliidese põhimõte on, et pärast ASR-i valmimist saab slaidid uuesti siduda ilma transkriptsiooni uuesti loomata. Uuesti sidumine kasutab sama video- ja ASR-artefakti ning loob uue slaiditöötluse versiooni.
+
+Kasutajale pakutakse seitset suhtelist tundlikkusastet: `−3`, `−2`, `−1`, `0`, `+1`, `+2` ja `+3`. Aste `0` tähendab vaikimisi lävendit. Positiivne aste vähendab lävendit ja tuvastab seega väiksemaid pildimuutusi; negatiivne aste suurendab lävendit ja nõuab suuremat muutust. Üks aste muudab lävendit `0,003` võrra. Kasutajaliideses ei näidata toorväärtusi ega nimetata astet “vaikeväärtuse muutuseks”.
+
+Vaikimisi lävend peab tulema `.env`-i võtmega `SLIDE_CHANGE_DISTANCE`; kinnitatud väärtus on `0.020`. Tehniline tuletus on: `tegelik lävend = SLIDE_CHANGE_DISTANCE − (tundlikkusaste × 0.003)`. See annab praeguse vaikeväärtuse korral astmetele `−3…+3` väärtused `0.029`, `0.026`, `0.023`, `0.020`, `0.017`, `0.014` ja `0.011`.
+
+Worker loeb vaikimisi lävendi `.env`-i võtmega `SLIDE_CHANGE_DISTANCE`, arvutab enne töötlemist tegeliku lävendi ning edastab nii selle kui tundlikkusastme slaiditöötlusele. Mõlemad väärtused salvestatakse `slides.json` ja ühendatud Markdowni tehniliste andmete ossa. Slaiditöö väljund on versioonitud kataloogis `outputs/jobs/<lecture_processing_id>/slides/<operation_id>/`, mistõttu uus sidumine ei kirjuta varasemat tulemust üle.
 
 ## 10. Slaidi pealkiri ja tekstituvastus
 
@@ -152,7 +162,7 @@ Enne võrdlemist pealkiri normaliseeritakse:
 
 Pealkiri on slaidi peamine tunnus, kuid mitte ainus tunnus. Mõnel slaidil puudub pealkiri, sama pealkiri võib esineda mitmel slaidil ja OCR võib sama teksti erinevalt lugeda.
 
-Kogu slaidi OCR ei ole vaikimisi nõutav. Seda kasutatakse varuvariandina ainult siis, kui pealkiri, pildisarnasus ja slaidide järjekord ei anna eraldi slaidifailiga piisavalt selget vastet.
+Kogu kaadri OCR-i ei tehta ilma eraldi slaidifailita. Eraldi slaidifaili olemasolul loetakse iga stabiilse videokandidaadi kogu nähtav tekst, sest rakenduse menüüd või vähese kontrastiga pealkiri võivad pealkirjaala OCR-i rikkuda, samal ajal kui slaidi põhitekst on loetav. Kogu kaadri OCR-i kasutatakse üksnes PDF-i tekstikihiga vastavuse kontrollimiseks. Kontrollimata OCR-pealkirja transkripti ei lisata.
 
 ## 11. Animatsioonide ja korduvate slaidide käsitlus
 
@@ -198,6 +208,8 @@ Video slaid ja staatiline slaid loetakse vastavaks ainult mitme tunnuse kooskõl
 3. pildi digitaalne sõrmejälg ja üldine kujundus;
 4. slaidide järjekord.
 
+Kui kogu videokaadri OCR-i sõnavara kattub ühe PDF-lehekülje tekstiga selgelt rohkem kui teiste lehekülgedega, võib see anda kinnitatud vaste ka vigase pealkirja-OCR-i korral. Nõrk või mitme lehekülje vahel ebaselge tekstikattuvus ei ole vaste kinnitamiseks piisav. PDF-i esimese lehekülje pealkiri võetakse lehekülje sisust; üldine faili metaandmete pealkiri, näiteks `PowerPoint Presentation`, ei kirjuta tuvastatud slaidipealkirja üle.
+
 Ajastus võetakse videost. Kinnitatud vastavuse korral kasutatakse lõppväljundis eraldi failist saadud kvaliteetset pilti.
 
 Iga vastavus saab oleku:
@@ -216,7 +228,7 @@ Slaidivahetuse tõttu ei lõhuta ega kirjutata ümber olemasolevat TalTechNLP tr
 Iga slaidi ilmumisaeg paigutatakse ajaliselt lähima segmendipiiri juurde. Slaidiviide sisaldab:
 
 - slaidi numbrit;
-- pealkirja, kui see on tuvastatav;
+- kinnitatud eraldi slaidifaili pealkirja, kui vaste on olemas; vasteta videokaadri kontrollimata OCR-pealkirja ei kuvata;
 - videost saadud ligikaudset ilmumisaega;
 - suhtelist pilditeed;
 - allika liiki: video, Echo slaidimaterjal või kasutaja fail.
@@ -291,6 +303,9 @@ Inimese kontroll võrdleb tuvastatud slaidide järjekorda ja ilmumisaegu otse vi
 - tugeva ja üheselt eristuva pildisarnasuse kasutamine OCR-i varuvariandina;
 - PDF-i metaandmetest teadaolevate akronüümide taastamine OCR-pealkirjades;
 - video kandidaadi sobitamine staatilise slaidiga enne slaidinumbri loomist.
+- eraldi slaidifaili olemasolul kogu stabiilse videokaadri OCR-i võrdlemine PDF-i tekstikihiga;
+- kontrollimata video-OCR-i pealkirjade väljajätmine transkriptist;
+- PDF-i esimese lehekülje sisulise pealkirja säilitamine üldise dokumendimetaandme asemel.
 
 Loengu 8.1 lõplik `video-slides-v2` kontroll:
 

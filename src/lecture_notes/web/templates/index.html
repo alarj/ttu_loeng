@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block header_actions %}
+  {% if user.is_admin %}<a class="button-link secondary-button compact-view header-button" href="/submissions/new">{{ t("new_submission") }}</a>{% endif %}
+{% endblock %}
+{% block content %}
+{% if message %}<div class="message">{{ t(message) }}</div>{% endif %}
+<section class="card course-index-card">
+  <h2>{{ t("courses") }}</h2>
+  {% if courses %}
+  <nav class="course-list" aria-label="{{ t('courses') }}">
+    {% for course in courses %}
+    <a class="course-list-item" href="/courses/{{ course.echo_canonical_section_id }}">
+      <span>
+        <strong>{{ course.course_title }}</strong>
+      </span>
+      <span class="course-count">{{ t("lecture_count") }}: {{ course.lecture_count }}</span>
+    </a>
+    {% endfor %}
+  </nav>
+  {% else %}
+  <p class="history-empty">{{ t("no_jobs") }}</p>
+  {% endif %}
+</section>
+{% endblock %}
+

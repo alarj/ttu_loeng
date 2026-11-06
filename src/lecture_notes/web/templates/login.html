@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card login-card">
+  <h2>{{ t("sign_in") }}</h2>
+  {% if message %}<p class="message error">{{ message }}</p>{% endif %}
+  <div
+    id="googleLoginMount"
+    data-not-configured="{{ t('google_not_configured') }}"
+    data-login-failed="{{ t('google_login_failed') }}"
+  ></div>
+  <p id="googleLoginMessage" class="message error" hidden></p>
+</section>
+{% endblock %}
+

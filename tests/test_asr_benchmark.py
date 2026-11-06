@@ -14,7 +14,11 @@ from lecture_notes.asr_benchmark import (
 from lecture_notes.slides import (
     _annotate_candidate_reference_hints,
     _build_slide_identities,
+    _match_reference_slides,
     _render_transcript_with_slides,
+    CHANGE_DISTANCE,
+    SIGNATURE_COLOR_MODE,
+    SIGNATURE_SIZE,
     build_parser as build_slide_parser,
     image_distance,
     normalize_text,
@@ -130,6 +134,11 @@ class SlideSourceTests(unittest.TestCase):
         self.assertEqual(image_distance((0, 10, 20), (0, 10, 20)), 0.0)
         self.assertAlmostEqual(image_distance((0, 0), (255, 255)), 1.0)
 
+    def test_slide_signature_size_is_detail_preserving(self) -> None:
+        self.assertEqual(SIGNATURE_SIZE, (160, 90))
+        self.assertEqual(SIGNATURE_COLOR_MODE, "RGB")
+        self.assertEqual(CHANGE_DISTANCE, 0.020)
+
     def test_slide_process_command_parses(self) -> None:
         args = build_slide_parser().parse_args(
             [
@@ -189,6 +198,42 @@ class SlideSourceTests(unittest.TestCase):
         _annotate_candidate_reference_hints(candidates, references)
         self.assertEqual(candidates[0]["reference_hint"], 1)
 
+    def test_full_frame_ocr_can_match_reference_despite_bad_title_ocr(self) -> None:
+        identities = [
+            {
+                "title": "sash kat Comet Sogn frites",
+                "ocr_text": "sash kat Comet Sogn frites",
+                "reference_ocr_text": (
+                    "Peidetud neuronite arv? Eksimismäär testandmetel "
+                    "Neuronite arvu varieerides leida eksimismäära miinimum"
+                ),
+                "signature": (250, 250, 250, 250),
+                "match_status": "video_only",
+                "reference": None,
+            }
+        ]
+        references = [
+            {
+                "index": 1,
+                "title": "Muu slaid",
+                "text": "Närvivõrgu mudel ja väljund",
+                "signature": (250, 250, 250, 250),
+            },
+            {
+                "index": 2,
+                "title": "Peidetud neuronite arv?",
+                "text": (
+                    "Peidetud neuronite arv? Eksimismäär testandmetel "
+                    "Neuronite arvu varieerides leida eksimismäära miinimum"
+                ),
+                "signature": (250, 250, 250, 250),
+            },
+        ]
+        _match_reference_slides(identities, references)
+        self.assertEqual(identities[0]["match_status"], "matched")
+        self.assertEqual(identities[0]["reference"]["index"], 2)
+        self.assertEqual(identities[0]["title"], "Peidetud neuronite arv?")
+
     def test_slide_is_inserted_at_nearest_segment_boundary(self) -> None:
         transcript = {
             "lesson": {"lesson_id": "lesson-1", "title": "Test"},
@@ -212,6 +257,30 @@ class SlideSourceTests(unittest.TestCase):
         )
         self.assertLess(result.index("### Slaid 1"), result.index("[00:00:10–00:00:20]"))
         self.assertGreater(result.index("### Slaid 1"), result.index("[00:00:00–00:00:10]"))
+        self.assertNotIn("### Slaid 1 — Pealkiri", result)
+
+    def test_confirmed_reference_title_is_shown_in_transcript(self) -> None:
+        transcript = {
+            "lesson": {"lesson_id": "lesson-1", "title": "Test"},
+            "segments": [
+                {"start_seconds": 0.0, "end_seconds": 10.0, "text": "Esimene."},
+            ],
+        }
+        identities = [
+            {
+                "id": "slide_001",
+                "number": 1,
+                "title": "Peidetud neuronite arv?",
+                "output_source": "user_file",
+                "reference": {"index": 17},
+            }
+        ]
+        result = _render_transcript_with_slides(
+            transcript,
+            identities,
+            [{"slide_id": "slide_001", "timestamp_seconds": 0.0}],
+        )
+        self.assertIn("### Slaid 1 — Peidetud neuronite arv?", result)
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,7 +2,7 @@
 
 ## 1. Dokumendi päritolu
 
-Koostaja: AI (OpenAI Codex) kasutaja 1.11.2026 kinnitatud uue ülesandepüstituse ja projekti tegelike katsetulemuste põhjal. Dokument asendab varasema konspektirakenduse lähteülesande; varasem versioon säilib Git-ajaloos märgendi `ver0.1` all.
+Koostaja: AI (OpenAI Codex) kasutaja 1.11.2026 kinnitatud uue ülesandepüstituse, projekti tegelike katsetulemuste ning 3.–4.11.2026 kinnitatud MVP3 veebirakenduse, ligipääsu ja ORDS-i arhitektuuriotsuste põhjal. Dokument asendab varasema konspektirakenduse lähteülesande; varasem versioon säilib Git-ajaloos märgendi `ver0.1` all ja MVP2 seis märgendi `ver0.2` all.
 
 ## 2. Sisukord
 
@@ -19,10 +19,11 @@ Koostaja: AI (OpenAI Codex) kasutaja 1.11.2026 kinnitatud uue ülesandepüstitus
 - [13. MVP2 ulatusest välja jääv](#13-mvp2-ulatusest-välja-jääv)
 - [14. Esimene kontrolljuhtum](#14-esimene-kontrolljuhtum)
 - [15. Vastuvõtukriteeriumid](#15-vastuvõtukriteeriumid)
+- [16. MVP3 laiendus](#16-mvp3-laiendus)
 
 ## 3. Dokumendi eesmärk
 
-Käesolev dokument määrab rakenduse eesmärgi, ulatuse, sisendid, väljundid ja vastuvõtukriteeriumid. Tehniline teostus on kirjeldatud failis [`tehniline_spek.md`](tehniline_spek.md). Slaidide tuvastamise, töötlemise ja transkriptiga sidumise detailne lahendus on eraldi failis [`slaiditootlus.md`](slaiditootlus.md).
+Käesolev dokument määrab rakenduse eesmärgi, ulatuse, sisendid, väljundid ja vastuvõtukriteeriumid. Jaotised 4–15 kirjeldavad MVP2 töötlusmootori alust. MVP3 muudab selle mitme loengu veebirakenduseks ja lisab serveriülese ORDS-i järjekorra integratsiooni jaotise 16 ning faili [`mvp3_veeb_ja_ords.md`](mvp3_veeb_ja_ords.md) järgi. Tehniline teostus on kirjeldatud failis [`tehniline_spek.md`](tehniline_spek.md). Slaidide tuvastamise, töötlemise ja transkriptiga sidumise detailne lahendus on eraldi failis [`slaiditootlus.md`](slaiditootlus.md).
 
 ## 4. Probleem ja kontrollitud lähteolukord
 
@@ -136,21 +137,29 @@ Slaidide olemasolu ei otsustata üksnes videofaili või Echo slaidiikooni olemas
 
 Slaidid võetakse vaikimisi videost. Eraldi slaidifaili kasutatakse kvaliteetsema pildi ja teksti allikana ainult pärast videos nähtud slaididega vastavuse kontrollimist. Täpne töövoog on failis [`slaiditootlus.md`](slaiditootlus.md).
 
-Video esmane slaidikontroll kasutab vaikimisi 20-sekundilise vahega kontrollkaadreid. Kontrollkaadrite võrdlus põhineb väikese halltoonides pildi digitaalsel sõrmejäljel, mitte kogu kaadri OCR-tekstil. Kui kahe järjestikuse põhikaadri vahel on pilt muutunud, otsib rakendus slaidi täpsema vahetusaja ainult selle 20-sekundilise vahemiku seest kahe-sekundilise sammuga. Mõlemad ajavahemikud peavad olema konfiguratsioonis muudetavad.
+Video esmane slaidikontroll kasutab vaikimisi 20-sekundilise vahega kontrollkaadreid. Kontrollkaadrite võrdlus põhineb 160 × 90 RGB-punktist koosneval pildi digitaalsel sõrmejäljel, mitte kogu kaadri OCR-tekstil. Kui kahe järjestikuse põhikaadri vahel on pilt muutunud, otsib rakendus slaidi täpsema vahetusaja ainult selle 20-sekundilise vahemiku seest kahe-sekundilise sammuga. Mõlemad ajavahemikud peavad olema konfiguratsioonis muudetavad.
 
-OCR käivitatakse pärast slaidikandidaadi leidmist eelkõige pealkirjaalal. Kogu slaidi OCR-i kasutatakse ainult siis, kui pealkiri, pildisarnasus ja slaidide järjekord ei võimalda eraldi slaidifailiga vastavust piisavalt kontrollida.
+OCR käivitatakse pärast slaidikandidaadi leidmist eelkõige pealkirjaalal. Kui kasutaja on andnud eraldi slaidifaili, loetakse stabiilselt videokaadrilt lisaks kogu nähtav tekst, et võrrelda seda PDF-i tekstikihiga. Kogu kaadri OCR-i kasutatakse ainult vastavuse kontrolliks ning selle kontrollimata tulemust ei esitata transkriptis slaidi pealkirjana.
 
 Teadaolev piirang on, et täielikult ühe 20-sekundilise põhivahemiku sisse jääv väga lühike slaid või sama slaidi juurde naasev ajutine vahepilt võib jääda leidmata. Piirang peab olema dokumenteeritud töö konfiguratsioonis ja tulemuses.
 
 ### 9.4. Slaidiviidete lisamine
 
 - Iga tuvastatud slaid saab järjestikuse numbri.
-- Võimaluse korral lisatakse slaidi pealkiri.
+- Slaidi pealkiri lisatakse ainult kinnitatud eraldi slaidifaili vastest; kontrollimata video-OCR-i teksti pealkirjana ei kuvata.
 - Slaidi ligikaudne ilmumisaeg võetakse videost.
 - Slaidiviide paigutatakse ajaliselt lähima transkriptsioonisegmendi piiri juurde.
 - Transkriptsioonisegmenti slaidiviite tõttu ei lõhuta.
 - Slaidi korduv näitamine võib viidata samale slaidile uue ilmumisajaga.
 - Kui videos slaide pole, valmib transkript ilma slaidiviideteta.
+
+### 9.5. Slaidide uuesti sidumine
+
+Pärast eduka ASR-i valmimist peab kasutaja saama käivitada samale loengule uue slaidide sidumise ilma kõnetuvastust uuesti käivitamata. Uus sidumine kasutab olemasolevat ajatemplitega transkripti, sama loengu videot ja sama aktiivset kasutaja antud slaidifaili, kui see on olemas.
+
+Uuesti sidumisel saab kasutaja valida slaidimuutuse tuvastamise tundlikkuse astme `−3`, `−2`, `−1`, `0`, `+1`, `+2` või `+3`. Kasutajaliides ei kuva tehnilist muutuselävendit. Positiivne aste tähendab tundlikumat tuvastamist ja negatiivne aste vähem tundlikku tuvastamist. Aste `0` kasutab vaikekonfiguratsiooni.
+
+Iga uuesti sidumine loob uue slaiditöötluse tulemuse versiooni. Varasemat tulemust ei kirjutata üle ning kasutajaliides peab võimaldama olemasolevaid versioone eraldi vaadata ja alla laadida.
 
 ## 10. Väljundid
 
@@ -174,6 +183,7 @@ Rakendus säilitab:
 - algse ajatemplitega transkriptsiooni masinloetaval kujul;
 - slaidide olemasolu kontrolli tulemuse;
 - slaidide järjekorra, pealkirjad ja ajastuse;
+- iga slaidide sidumise versiooni kasutaja valitud tundlikkusastme, tegeliku muutuselävendi, konfiguratsiooni ja kestuse;
 - püsivad slaidipildid;
 - valikulise slaidifaili teisendamise ja vastavuse kontrolli tulemuse;
 - mudelite, tööriistade ja konfiguratsiooni versioonid;
@@ -197,9 +207,9 @@ Välise mudeli kasutamine, teenusepakkujale failide saatmine, transkripti keelel
 - Valmis transkriptsiooni ei arvutata slaiditöötluse muutmise või kordamise tõttu uuesti.
 - Ajutised audio- ja videofailid asuvad ainult runtime'i `work/` kataloogis ning eemaldatakse pärast töö lõppu.
 - Mahukaid audio-, video- ja mudelifailide koopiaid ei salvestata Git-repositooriumi ega andmebaasi.
-- Esimene versioon kasutab failipõhist tööolekut ega vaja andmebaasi.
-- Kui püsiv andmebaas muutub vajalikuks, kasutatakse olemasolevat Oracle Always Free andmebaasi ja projektile eraldatud oma schemat. Teise projekti schema kasutamine vajab eelnevat põhjendust ning dokumenteerimist mõlemas projektis.
-- Võimalik veebiliides avaldatakse `fun-o.eu` domeeni all ühise nginx-serveri kaudu. TLS-i haldab olemasolev Let's Encrypti lahendus.
+- MVP2 töötlusmootor kasutab failipõhist tööolekut. MVP3 veebirakendus kasutab olemasolevas Oracle Always Free andmebaasis projektile eraldatud oma skeemi kasutajate, loengutöötluste, ORDS-i tööseoste ja üleslaadimiste hoidmiseks; täpne mudel on failis [`../db/erd.md`](../db/erd.md).
+- FastAPI ja worker kasutavad rakenduse skeemiga otseühendust `python-oracledb` ühenduste pooli kaudu. ORDS-i HTTP API-d kasutatakse ainult serveriülese tööjärjekorra jaoks.
+- MVP3 veebiliides avaldatakse aadressil `https://ttu-loeng.fun-o.eu` olemasoleva ühise nginx-serveri kaudu. DNS-kirje, nginxi HTTP→HTTPS suunamine, nime sisaldav ühine TLS-sertifikaat ja HTTPS-pöördproksi töötavale veebikonteinerile on seadistatud.
 - Saladusi, ligipääsutokeneid ja autentimisküpsiseid ei salvestata Git-i, logidesse ega väljunditesse.
 
 ## 13. MVP2 ulatusest välja jääv
@@ -252,3 +262,30 @@ MVP2 loetakse esimese kontrolljuhtumi põhjal edukaks, kui:
 13. ajutine audio ja video eemaldatakse pärast edukat või nurjunud töötlust;
 14. töö olek, kasutatud mudel, tööriistad, kestus ja võimalikud vead on kontrollitavad;
 15. slaiditöötluse kordamine ei käivita valmis kõnetuvastust uuesti.
+
+## 16. MVP3 laiendus
+
+MVP3 peab lisama olemasolevale töötlusmootorile:
+
+- FastAPI veebiliidese;
+- võimaluse valida ja esitada korraga mitu Echo360 loengut;
+- võimaluse siduda iga valitud loenguga oma PPT-, PPTX- või PDF-fail;
+- kasutajavaate, mis kuvab iga loengu ASR-i ja slaiditöötluse autoriteetset ORDS-i olekut ning valmis artefakte;
+- püsiva konteineriseeritud workeri, mis täidab ORDS-ist claim'itud `asr` ja `slides` töid;
+- ORDS-i rakenduskoodi `ttu_loeng`;
+- sama loengu slaiditöö sõltuvuse ASR-ist `previous_job_id` kaudu.
+- administraatori võimaluse käivitada edukale ASR-ile uus slaiditöötlus olemasolevat ASR-i kordamata ning valida selleks tundlikkusaste `−3…+3`;
+- slaiditöötluse versioonide eraldi säilitamise ja kuvamise ilma varasemat tulemust üle kirjutamata;
+- serveri teiste rakendustega ühtse Google Identity Services ID-tokeniga sisselogimise, mille esimene edukas sisselogimine loob `USER` rolliga rakenduse kasutaja;
+- ligipääsureegli, mille järgi `USER` näeb ja laadib alla kõigi tööde valmis tulemusi ning `ADMIN` võib lisaks uusi töid esitada ja avalikke linke hallata;
+- administraatori võimaluse sulgeda konkreetne loengutöötlus soft delete'iga ilma sama kursuse teisi loenguid või submission'it sulgemata;
+- olemasoleva kursuse valimise nime järgi uute loengute lisamisel; valitud kursuse Echo360 URL loetakse andmebaasist, samas säilib eraldi võimalus sisestada uus URL;
+- aegunud sessiooniga kaitstud HTML-lehelt puhtale Google'i sisselogimisvaatele suunamise;
+- sisselogimiseta slaididega ühendatud valmis Markdowni ja selle piltide ZIP-paketi allalaadimise ainult konkreetse loengu väärtustatud `public_id` otselingi kaudu; avalikku linki ei saa luua enne selle tulemuse valmimist ning tööde nimekiri ei ole anonüümselt nähtav;
+- ühise teenusekihi, mida kasutavad HTML-marsruudid ja mille peale lisatakse järgmises etapis JSON API.
+
+ORDS on ainus tööjärjekorra, järjestuse ja käivitamisloa autoriteet. Rakendus ei pea kohalikku järjekorda, ei vali ise järgmist tööd ega käivita ressursimahukat tööd ilma ORDS-i claim'ita. ORDS ei täida töö sisu: ASR-i ja slaiditöötluse protsessi, failid, logid ja artefaktid haldab `ttu_loeng` rakendus.
+
+ASR ja slaiditöötlus kasutavad juba töötavat püsivat worker-konteinerit. Uue töö esitamine ei ehita image'it ega loo uut töötluskonteinerit. Worker on piiratud vaikimisi kolme CPU-tuumaga; ORDS väldib teiste liidestatud rakenduste mahukate tööde samaaegset aktiivseks muutumist.
+
+MVP3 täpne tööleping, oleku autoriteet, kasutajavoog, konteinerijaotus ja etapistus on failis [`mvp3_veeb_ja_ords.md`](mvp3_veeb_ja_ords.md).
