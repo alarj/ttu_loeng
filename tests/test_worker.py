@@ -14,8 +14,11 @@ class FakeRepository:
         self.started = []
         self.completed = []
         self.local_outcome = None
+        self.missing_operation = False
 
     def operation_context(self, operation_id):
+        if self.missing_operation:
+            raise KeyError(operation_id)
         return {
             "operation_id": operation_id,
             "operation_type": "slides",
@@ -88,6 +91,9 @@ class WorkerTests(unittest.TestCase):
                 return process
 
             worker = Worker(repository, ords, settings, process_factory=factory)
+            reference = Path(directory) / "outputs/jobs/12/slides/55/reference"
+            reference.mkdir(parents=True)
+            (reference / "slide_001.png").write_bytes(b"reference")
             worker.execute(
                 {
                     "job_id": 99,
@@ -107,6 +113,7 @@ class WorkerTests(unittest.TestCase):
             self.assertIn("--change-distance", created[0].command)
             self.assertIn("0.014000", created[0].command)
             self.assertIn(str(Path(directory) / "outputs/jobs/12/slides/55"), created[0].command)
+            self.assertFalse(reference.exists())
 
     def test_recovered_completed_operation_is_not_run_again(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -143,6 +150,45 @@ class WorkerTests(unittest.TestCase):
                 recovered=True,
             )
             self.assertEqual(ords.completed[0][1]["outcome"], "SUCCEEDED")
+
+    def test_missing_local_operation_interrupts_claimed_ords_job(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository()
+            repository.missing_operation = True
+            ords = FakeOrds()
+            settings = WorkerSettings(
+                runtime_root=Path(directory),
+                host_id="host",
+                cpu_threads=3,
+                asr_model="model",
+                asr_revision="revision",
+                asr_model_subfolder="ct2",
+                asr_configuration_id="config",
+                slide_coarse_seconds=20,
+                slide_refine_seconds=2,
+                slide_change_distance=0.020,
+            )
+            worker = Worker(
+                repository,
+                ords,
+                settings,
+                process_factory=lambda *args, **kwargs: self.fail("process must not be started"),
+            )
+
+            worker.execute(
+                {
+                    "job_id": 99,
+                    "application_job_id": "55",
+                    "job_type_code": "slides",
+                    "parameters": {"lecture_processing_id": 12},
+                    "execution_token": "token",
+                    "status": "CLAIMED",
+                }
+            )
+
+            self.assertEqual(repository.started, [])
+            self.assertEqual(repository.completed, [])
+            self.assertEqual(ords.completed, [(99, {"outcome": "INTERRUPTED", "exit_code": 0, "end_reason": "APPLICATION_OPERATION_NOT_FOUND"})])
 
 
 if __name__ == "__main__":

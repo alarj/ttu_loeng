@@ -26,7 +26,7 @@ from starlette.concurrency import run_in_threadpool
 from lecture_notes.web.database import OracleRepository
 from lecture_notes.web.models import UploadInput, User
 from lecture_notes.web.ords import OrdsClient
-from lecture_notes.web.services import LectureService, ValidationError
+from lecture_notes.web.services import ORIGINAL_TRANSCRIPT_VERSION_ID, LectureService, ValidationError
 from lecture_notes.web.settings import OrdsSettings, WebSettings
 from lecture_notes.web.translations import translate
 
@@ -232,15 +232,26 @@ def create_app(
             if not public_url:
                 raise ValidationError("INVALID_COURSE", "Course URL is missing")
             resolver = await run_in_threadpool(request.app.state.service.resolve, public_url)
+            resolver_section_id = str(resolver.get("canonical_section_id") or "").strip()
+            existing_lesson_ids = (
+                await run_in_threadpool(
+                    request.app.state.service.active_echo_lesson_ids,
+                    resolver_section_id,
+                )
+                if resolver_section_id
+                else set()
+            )
             submission_request_id = str(uuid.uuid4())
             message = None
         except (KeyError, ValidationError):
             resolver = None
+            existing_lesson_ids = set()
             submission_request_id = None
             message = translate("resolve_failed")
         except Exception:
             LOGGER.exception("Echo360 resolution failed")
             resolver = None
+            existing_lesson_ids = set()
             submission_request_id = None
             message = translate("resolve_failed")
         return TEMPLATES.TemplateResponse(
@@ -251,6 +262,7 @@ def create_app(
                 user,
                 courses=courses,
                 resolver=resolver,
+                existing_lesson_ids=existing_lesson_ids,
                 public_url=public_url,
                 manual_public_url=manual_public_url,
                 selected_course_id=canonical_section_id,
@@ -346,15 +358,28 @@ def create_app(
             lecture = await run_in_threadpool(request.app.state.service.get_lecture, lecture_id)
         except KeyError as exc:
             raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request")) from exc
-        selected_version = await run_in_threadpool(
-            request.app.state.service.selected_slide_version,
-            lecture,
-            version,
-        )
-        if version is not None and selected_version is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
+        selected_original = version == ORIGINAL_TRANSCRIPT_VERSION_ID
+        selected_version = None
+        if selected_original:
+            result_path = await run_in_threadpool(request.app.state.service.original_transcript_path, lecture)
+            if result_path is None:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
+        else:
+            selected_version = await run_in_threadpool(
+                request.app.state.service.selected_slide_version,
+                lecture,
+                version,
+            )
+            if version is not None and selected_version is None:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
+            result_path = await run_in_threadpool(request.app.state.service.result_path, lecture, selected_version)
         slide_versions = await run_in_threadpool(request.app.state.service.slide_versions, lecture)
-        result_path = request.app.state.service.result_path(lecture, selected_version)
+        original_transcript_ready = await run_in_threadpool(
+            request.app.state.service.original_transcript_path,
+            lecture,
+        ) is not None
+        if version is None and selected_version is None and original_transcript_ready:
+            selected_original = True
         result_text = (
             await run_in_threadpool(result_path.read_text, encoding="utf-8")
             if result_path is not None
@@ -379,10 +404,12 @@ def create_app(
                 lecture=lecture,
                 result_ready=result_path is not None,
                 sharing_ready=sharing_ready,
-                download_ready=sharing_ready,
+                download_ready=result_path is not None,
                 result_html=result_html,
                 slide_versions=slide_versions,
                 selected_version=selected_version,
+                selected_original=selected_original,
+                original_transcript_ready=original_transcript_ready,
                 echo_url=f"https://echo360.org.uk/lesson/{quote(lecture.echo_lesson_id, safe='')}/classroom",
                 base_url=settings.base_url,
             ),
@@ -398,6 +425,19 @@ def create_app(
         del user
         try:
             lecture = await run_in_threadpool(request.app.state.service.get_lecture, lecture_id)
+            if operation_id == ORIGINAL_TRANSCRIPT_VERSION_ID:
+                result_path = await run_in_threadpool(request.app.state.service.original_transcript_path, lecture)
+                if result_path is None:
+                    raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
+                result_text = await run_in_threadpool(result_path.read_text, encoding="utf-8")
+                return JSONResponse(
+                    {
+                        "operation_id": None,
+                        "is_original": True,
+                        "html": _render_markdown(result_text, lecture_id, None),
+                        "download_url": f"/lectures/{lecture_id}/download?version={ORIGINAL_TRANSCRIPT_VERSION_ID}",
+                    }
+                )
             version = await run_in_threadpool(
                 request.app.state.service.selected_slide_version,
                 lecture,
@@ -411,6 +451,7 @@ def create_app(
         return JSONResponse(
             {
                 "operation_id": version.operation_id,
+                "is_original": False,
                 "html": _render_markdown(result_text, lecture_id, version.operation_id),
                 "download_url": f"/lectures/{lecture_id}/download?version={version.operation_id}",
             }

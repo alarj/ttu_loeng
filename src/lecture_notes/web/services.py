@@ -8,6 +8,7 @@ import threading
 import uuid
 import zipfile
 from dataclasses import dataclass, replace
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
@@ -26,6 +27,7 @@ MARKDOWN_IMAGE_RE = re.compile(
     re.IGNORECASE,
 )
 UNSAFE_FILENAME_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+ORIGINAL_TRANSCRIPT_VERSION_ID = 0
 
 
 @dataclass(frozen=True)
@@ -213,7 +215,18 @@ class LectureService:
             self._with_statuses(lecture)
             for lecture in self.repository.list_lectures(canonical_section_id)
         ]
-        return sorted(lectures, key=lambda lecture: (lecture.lecture_title or "").casefold())
+        return sorted(
+            lectures,
+            key=lambda lecture: (
+                (lecture.lecture_title or "").casefold(),
+                lecture.lecture_start_at is None,
+                lecture.lecture_start_at or datetime.max,
+                lecture.lecture_processing_id,
+            ),
+        )
+
+    def active_echo_lesson_ids(self, canonical_section_id: str) -> set[str]:
+        return self.repository.active_echo_lesson_ids(canonical_section_id)
 
     def get_lecture(self, lecture_id: int) -> Lecture:
         return self._with_statuses(self.repository.get_lecture(lecture_id))
@@ -272,7 +285,7 @@ class LectureService:
                     is_default=operation.operation_id == lecture.default_slides_operation_id,
                 )
             )
-        return sorted(versions, key=lambda version: version.attempt_number, reverse=True)
+        return sorted(versions, key=lambda version: version.attempt_number)
 
     def selected_slide_version(
         self,
@@ -290,6 +303,9 @@ class LectureService:
         selected = self.selected_slide_version(lecture)
         if selected is not None:
             return selected.markdown_path
+        return self.original_transcript_path(lecture)
+
+    def original_transcript_path(self, lecture: Lecture) -> Path | None:
         lecture_id = lecture.lecture_processing_id
         base = self.runtime_root / "outputs" / "jobs" / str(lecture_id)
         candidates = [base / "transcript" / "taltechnlp-turbo-et-verbatim-2604-int8" / "transcript.md"]
@@ -383,8 +399,15 @@ class LectureService:
 
     def download_archive(self, lecture_id: int, version_id: int | None = None) -> TranscriptArchive:
         lecture = self.repository.get_lecture(lecture_id)
+        if version_id == ORIGINAL_TRANSCRIPT_VERSION_ID:
+            path = self.original_transcript_path(lecture)
+            if path is None:
+                raise KeyError(lecture_id)
+            return self._transcript_archive(lecture, path, None)
         version = self.selected_slide_version(lecture, version_id)
         path = self.publishable_result_path(lecture, version)
+        if path is None and version_id is None:
+            path = self.original_transcript_path(lecture)
         if path is None:
             raise KeyError(lecture_id)
         return self._transcript_archive(lecture, path, version)
@@ -415,9 +438,10 @@ class LectureService:
                 root = f"{title}/"
                 archive.writestr(root, b"")
                 archive.writestr(f"{root}{title}.md", markdown.encode("utf-8"))
-                archive.writestr(f"{root}images/", b"")
-                for image_name, image_path in images:
-                    archive.write(image_path, f"{root}images/{image_name}")
+                if images:
+                    archive.writestr(f"{root}images/", b"")
+                    for image_name, image_path in images:
+                        archive.write(image_path, f"{root}images/{image_name}")
             output.seek(0)
         except Exception:
             output.close()

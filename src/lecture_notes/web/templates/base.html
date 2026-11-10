@@ -30,7 +30,10 @@
       {% endif %}
     </header>
     <main>{% block content %}{% endblock %}</main>
-    <footer class="site-footer">{{ t("footer_notice") }}</footer>
+    <footer class="site-footer">
+      <p>{{ t("footer_notice") }}</p>
+      <p>{{ t("footer_notice2") }}</p>
+    </footer>
   </div>
 </body>
 </html>
