@@ -45,6 +45,7 @@
             <span class="lecture-choice-name">{{ lesson.display_name or lesson.name or lesson.lesson_id }}</span>
             {% if lesson.start_time_utc %}<time class="local-time lecture-choice-time" datetime="{{ lesson.start_time_utc }}">{{ lesson.start_time_utc }}</time>{% endif %}
             <span class="lecture-choice-status">{{ t("available") if lesson.recording_status == 'available' else t("unavailable") }}</span>
+            {% if lesson.lesson_id in existing_lesson_ids %}<span class="lecture-choice-existing">{{ t("already_added") }}</span>{% endif %}
           </span>
         </label>
         {% if lesson.recording_status == 'available' %}

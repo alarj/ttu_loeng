@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 import subprocess
 import time
 import uuid
@@ -59,7 +60,18 @@ class Worker:
 
     def execute(self, job: dict[str, Any], *, recovered: bool = False) -> None:
         operation_id = int(job["application_job_id"])
-        context = self.repository.operation_context(operation_id)
+        try:
+            context = self.repository.operation_context(operation_id)
+        except KeyError:
+            LOGGER.warning("Claimed ORDS job has no active local operation operation_id=%d", operation_id)
+            self.ords.complete(
+                job,
+                self.identity,
+                outcome="INTERRUPTED",
+                exit_code=0,
+                end_reason="APPLICATION_OPERATION_NOT_FOUND",
+            )
+            return
         if recovered and context.get("local_outcome") in {"SUCCEEDED", "FAILED"}:
             outcome = context["local_outcome"]
             self.ords.complete(
@@ -122,6 +134,8 @@ class Worker:
             log.close()
 
         outcome = "SUCCEEDED" if return_code == 0 else "FAILED"
+        if outcome == "SUCCEEDED" and context["operation_type"] == "slides":
+            self._remove_reference_slides(context)
         self.repository.mark_operation_completed(
             operation_id,
             outcome,
@@ -135,6 +149,29 @@ class Worker:
             exit_code=return_code,
             end_reason="COMPLETED" if return_code == 0 else "PROCESS_EXIT",
         )
+
+    def _remove_reference_slides(self, context: dict[str, Any]) -> None:
+        """Remove rendered matching inputs after a successful slides operation.
+
+        The original user file remains under ``inputs/<lecture_processing_id>`` and
+        is rendered again if the lecture is later reprocessed.  Final images have
+        already been written to the sibling ``images`` directory at this point.
+        """
+        reference_dir = (
+            self.settings.runtime_root
+            / "outputs"
+            / "jobs"
+            / str(context["lecture_processing_id"])
+            / "slides"
+            / str(context["operation_id"])
+            / "reference"
+        )
+        if not reference_dir.is_dir():
+            return
+        try:
+            shutil.rmtree(reference_dir)
+        except OSError:
+            LOGGER.exception("Could not remove rendered reference slides path=%s", reference_dir)
 
     def _wait_with_heartbeat(self, process: Any, job: dict[str, Any]) -> int:
         interval = self.ords.settings.heartbeat_interval_seconds

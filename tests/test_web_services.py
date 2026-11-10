@@ -299,6 +299,19 @@ class LectureServiceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValidationError, "Missing referenced slide image"):
                 service.download_archive(20)
 
+    def test_original_transcript_download_has_no_images_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            service, _, _ = self.service(root)
+            transcript = root / "outputs/jobs/20/transcript/taltechnlp-turbo-et-verbatim-2604-int8/transcript.md"
+            transcript.parent.mkdir(parents=True)
+            transcript.write_text("algne transkript\n", encoding="utf-8")
+
+            archive_result = service.download_archive(20, 0)
+            with zipfile.ZipFile(io.BytesIO(b"".join(archive_result.body))) as archive:
+                self.assertEqual(archive.namelist(), ["Loeng 1/", "Loeng 1/Loeng 1.md"])
+                self.assertEqual(archive.read("Loeng 1/Loeng 1.md"), b"algne transkript\n")
+
     def test_slide_image_path_accepts_only_existing_image_filename(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -328,6 +341,23 @@ class LectureServiceTests(unittest.TestCase):
             path.write_text("combined", encoding="utf-8")
             service.set_default_slide_version(20, 41)
             self.assertEqual(repository.default_calls, [(20, 41)])
+
+    def test_slide_versions_are_in_ascending_attempt_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            service, repository, _ = self.service(root)
+            repository.public_lecture.operations.append(
+                Operation(42, "slides", 2, 102, slide_sensitivity_level=2, local_outcome="SUCCEEDED")
+            )
+            for operation_id in (41, 42):
+                path = root / f"outputs/jobs/20/slides/{operation_id}/transcript_with_slides.md"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("combined", encoding="utf-8")
+
+            self.assertEqual(
+                [version.attempt_number for version in service.slide_versions(repository.public_lecture)],
+                [1, 2],
+            )
 
     def test_soft_delete_targets_requested_lecture(self):
         with tempfile.TemporaryDirectory() as directory:

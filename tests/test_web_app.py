@@ -65,6 +65,11 @@ class FakeRepository:
             return []
         return [self.lecture]
 
+    def active_echo_lesson_ids(self, canonical_section_id):
+        if canonical_section_id != self.course.echo_canonical_section_id:
+            return set()
+        return {self.lecture.echo_lesson_id}
+
     def get_lecture(self, lecture_id):
         if lecture_id != 12:
             raise KeyError(lecture_id)
@@ -209,6 +214,7 @@ class WebAppTests(unittest.TestCase):
                 self.assertIn("Testkursus", index.text)
                 self.assertIn(">Loengud</a>", index.text)
                 self.assertIn("Kõik loengud ja nendes avaldatud materjalid kuuluvad Tallinna Tehnikaülikoolile ja / või loengu autorile.", index.text)
+                self.assertIn("Loengute transkriptsioonid on loodud AI poolt TalTechNLP kõnetuvastusmudeliga loengusalvestiste heliribast.", index.text)
                 self.assertNotIn("Testloeng", index.text)
                 course = client.get("/courses/course-section-id")
                 self.assertIn("Testloeng", course.text)
@@ -221,7 +227,13 @@ class WebAppTests(unittest.TestCase):
                 self.assertNotIn("Kustuta", course.text)
                 self.assertEqual(client.get("/submissions/new").status_code, 403)
                 download = client.get("/lectures/12/download")
-                self.assertEqual(download.status_code, 404)
+                self.assertEqual(download.status_code, 200)
+                with zipfile.ZipFile(io.BytesIO(download.content)) as archive:
+                    self.assertEqual(archive.namelist(), ["Testloeng/", "Testloeng/Testloeng.md"])
+                    self.assertEqual(
+                        archive.read("Testloeng/Testloeng.md"),
+                        b"authenticated transcript",
+                    )
 
     def test_admin_can_open_submission_form(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -267,6 +279,7 @@ class WebAppTests(unittest.TestCase):
                 form = client.get("/submissions/new")
                 csrf = form.text.split('name="csrf_token" value="', 1)[1].split('"', 1)[0]
                 client.app.state.service.resolve = lambda _url: {
+                    "canonical_section_id": "course-section-id",
                     "lessons": [
                         {
                             "lesson_id": "lesson-id",
@@ -291,6 +304,7 @@ class WebAppTests(unittest.TestCase):
                 self.assertIn("lecture-choice-name", response.text)
                 self.assertIn("Lisa slaidid", response.text)
                 self.assertIn("slide-upload-button", response.text)
+                self.assertIn("Juba lisatud", response.text)
                 self.assertIn('id="submissionProgress"', response.text)
                 self.assertIn('name="submission_request_id" value="', response.text)
                 self.assertIn("Loenguid lisatakse ja taustatöid registreeritakse. Palun oota.", response.text)
@@ -329,6 +343,7 @@ class WebAppTests(unittest.TestCase):
                         local_started_at=datetime(2026, 11, 5, 8, 4, 0),
                     ),
                 ]
+                client.app.state.repository.lecture.default_slides_operation_id = 2
                 self.login(client)
                 response = client.get("/lectures/12")
                 self.assertEqual(response.status_code, 200)
@@ -341,6 +356,8 @@ class WebAppTests(unittest.TestCase):
                 self.assertIn('src="/lectures/12/slides/2/slide_001.png"', response.text)
                 self.assertIn('id="openReprocessSlidesDialog"', response.text)
                 self.assertIn('id="slideVersionSelect"', response.text)
+                self.assertIn("Versioon 1 — default", response.text)
+                self.assertNotIn("Versioon 1 (vaikimisi)", response.text)
                 self.assertIn('id="openDefaultSlideVersionDialog"', response.text)
                 self.assertIn('href="/courses/course-section-id"', response.text)
                 self.assertIn('id="openOriginalVideoDialog"', response.text)
@@ -371,6 +388,35 @@ class WebAppTests(unittest.TestCase):
                         archive.read("Testloeng/images/slide_001.png"),
                         b"slide-image",
                     )
+
+    def test_original_transcript_is_selectable_and_downloaded_without_images(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            raw = root / "outputs/jobs/12/transcript/taltechnlp-turbo-et-verbatim-2604-int8/transcript.md"
+            combined = root / "outputs/jobs/12/slides/2/transcript_with_slides.md"
+            raw.parent.mkdir(parents=True)
+            combined.parent.mkdir(parents=True)
+            raw.write_text("# Algne\n\nIlma slaidideta.\n", encoding="utf-8")
+            combined.write_text("# Slaididega\n", encoding="utf-8")
+            with self.make_client(root, "USER") as client:
+                client.app.state.repository.lecture.operations = [
+                    Operation(2, "slides", 1, 2, slide_sensitivity_level=0, local_outcome="SUCCEEDED")
+                ]
+                self.login(client)
+                detail = client.get("/lectures/12")
+                self.assertIn('value="0">Algne transkript (ilma slaidideta)</option>', detail.text)
+
+                version = client.get("/lectures/12/versions/0")
+                self.assertEqual(version.status_code, 200)
+                self.assertTrue(version.json()["is_original"])
+                self.assertEqual(version.json()["download_url"], "/lectures/12/download?version=0")
+                self.assertIn("Ilma slaidideta.", version.json()["html"])
+
+                download = client.get("/lectures/12/download?version=0")
+                self.assertEqual(download.status_code, 200)
+                with zipfile.ZipFile(io.BytesIO(download.content)) as archive:
+                    self.assertEqual(archive.namelist(), ["Testloeng/", "Testloeng/Testloeng.md"])
+                    self.assertEqual(archive.read("Testloeng/Testloeng.md"), raw.read_bytes())
 
     def test_video_endpoint_forwards_requested_byte_range_as_stream(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -115,6 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const slideVersionSelect = document.getElementById("slideVersionSelect");
     const downloadSelectedVersion = document.getElementById("downloadSelectedVersion");
     const defaultSlideVersionOperationId = document.getElementById("defaultSlideVersionOperationId");
+    const openDefaultSlideVersionDialog = document.getElementById("openDefaultSlideVersionDialog");
     const videoUrl = transcriptViewer.dataset.videoUrl;
     let pendingVideoStart = null;
     const hideVideo = () => {
@@ -184,7 +185,8 @@ document.addEventListener("DOMContentLoaded", () => {
           transcriptContent.innerHTML = payload.html;
           transcriptContent.querySelectorAll("img").forEach((image) => { image.tabIndex = 0; });
           if (downloadSelectedVersion) downloadSelectedVersion.href = payload.download_url;
-          if (defaultSlideVersionOperationId) defaultSlideVersionOperationId.value = String(payload.operation_id);
+          if (defaultSlideVersionOperationId) defaultSlideVersionOperationId.value = payload.operation_id === null ? "" : String(payload.operation_id);
+          if (openDefaultSlideVersionDialog) openDefaultSlideVersionDialog.disabled = payload.is_original;
         } catch (_error) {
           window.location.reload();
         }

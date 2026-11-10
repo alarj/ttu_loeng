@@ -18,7 +18,7 @@
         {% if user.is_admin and lecture.asr_succeeded %}<button id="openReprocessSlidesDialog" class="secondary-button compact-view" type="button">{{ t("reprocess_slides") }}</button>{% endif %}
         {% if result_ready %}<button id="openTranscriptViewer" class="compact-view" type="button">{{ t("view") }}</button>{% endif %}
         {% if download_ready %}
-        <a id="downloadSelectedVersion" class="button-link secondary-button compact-view icon-button" href="/lectures/{{ lecture.lecture_processing_id }}/download{% if selected_version %}?version={{ selected_version.operation_id }}{% endif %}" title="{{ t('download') }}" aria-label="{{ t('download') }}">
+        <a id="downloadSelectedVersion" class="button-link secondary-button compact-view icon-button" href="/lectures/{{ lecture.lecture_processing_id }}/download{% if selected_original %}?version=0{% elif selected_version %}?version={{ selected_version.operation_id }}{% endif %}" title="{{ t('download') }}" aria-label="{{ t('download') }}">
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg>
         </a>
         {% endif %}
@@ -137,15 +137,16 @@
   <div class="transcript-dialog-head">
     <h2 id="transcriptViewerTitle">{{ lecture.lecture_title or t("lecture") }}</h2>
     <div class="transcript-dialog-controls">
-      {% if slide_versions %}
+      {% if slide_versions or original_transcript_ready %}
       <label class="version-selector" for="slideVersionSelect">{{ t("slide_version") }}
         <select id="slideVersionSelect" data-url-template="/lectures/{{ lecture.lecture_processing_id }}/versions/__operation_id__">
+          {% if original_transcript_ready %}<option value="0"{% if selected_original %} selected{% endif %}>{{ t("original_transcript") }}</option>{% endif %}
           {% for version in slide_versions %}
-          <option value="{{ version.operation_id }}"{% if selected_version and version.operation_id == selected_version.operation_id %} selected{% endif %}>{{ t("slide_version") }} {{ version.attempt_number }}{% if version.sensitivity_level is none or version.sensitivity_level == 0 %} ({{ t("default_sensitivity") }}){% else %} ({% if version.sensitivity_level > 0 %}+{% endif %}{{ version.sensitivity_level }}){% endif %}{% if version.is_default %} — {{ t("default_version") }}{% endif %}</option>
+          <option value="{{ version.operation_id }}"{% if selected_version and version.operation_id == selected_version.operation_id %} selected{% endif %}>{{ t("slide_version") }} {{ version.attempt_number }}{% if version.is_default %} — {{ t("default_version") }}{% endif %}</option>
           {% endfor %}
         </select>
       </label>
-      {% if user.is_admin %}<button id="openDefaultSlideVersionDialog" class="secondary-button compact-view" type="button">{{ t("set_default_version") }}</button>{% endif %}
+      {% if user.is_admin and slide_versions %}<button id="openDefaultSlideVersionDialog" class="secondary-button compact-view" type="button"{% if selected_original %} disabled{% endif %}>{{ t("set_default_version") }}</button>{% endif %}
       {% endif %}
       <button id="closeTranscriptViewer" class="secondary-button compact-view" type="button">{{ t("close") }}</button>
     </div>

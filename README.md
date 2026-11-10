@@ -127,15 +127,15 @@ outputs/jobs/<lecture_processing_id>/
 │   ├── run.json
 │   ├── transcript.json
 │   └── transcript.md
-└── slides/
+└── slides/<operation_id>/
     ├── run.json
     ├── slides.json
     ├── transcript_with_slides.md
-    ├── images/
-    └── reference/
+    ├── images/                    # lõplikud Markdownis viidatud pildid
+    └── reference/                 # tööaegne võrdlusmaterjal, eemaldatakse edu järel
 ```
 
-Ajutised allikafailid asuvad runtime'i `work/` kataloogis. Internetist uuesti hangitavat audiot ega videot ei säilitata pärast töö lõppu.
+Kui kasutaja on lisanud slaidifaili, renderdatakse sellest `reference/` kausta tööaegsed võrdluspildid. Eduka slaiditöö järel eemaldab worker selle kausta; algne üles laaditud slaidifail jääb `inputs/<lecture_processing_id>/` alla ning seda kasutatakse järgmisel sidumisel uuesti. Ajutised allikafailid asuvad runtime'i `work/` kataloogis. Internetist uuesti hangitavat audiot ega videot ei säilitata pärast töö lõppu.
 
 ## 7. Piirangud
 

@@ -362,7 +362,9 @@ class OracleRepository:
                   JOIN submissions s ON s.submission_id = lp.submission_id
                  WHERE lp.end_date IS NULL AND s.end_date IS NULL
                    AND (:section_id IS NULL OR s.echo_canonical_section_id = :section_id)
-                 ORDER BY LOWER(lp.lecture_title), lp.lecture_processing_id
+                 ORDER BY LOWER(lp.lecture_title) NULLS LAST,
+                          lp.lecture_start_at NULLS LAST,
+                          lp.lecture_processing_id
                 """,
                 {"section_id": canonical_section_id},
             )
@@ -370,6 +372,21 @@ class OracleRepository:
         lectures = [self._lecture(value) for value in rows if value is not None]
         self._attach_operations(lectures)
         return lectures
+
+    def active_echo_lesson_ids(self, canonical_section_id: str) -> set[str]:
+        with self._connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT DISTINCT lp.echo_lesson_id
+                  FROM lecture_processings lp
+                  JOIN submissions s ON s.submission_id = lp.submission_id
+                 WHERE s.echo_canonical_section_id = :section_id
+                   AND lp.end_date IS NULL
+                   AND s.end_date IS NULL
+                """,
+                {"section_id": canonical_section_id},
+            )
+            return {str(row[0]) for row in cursor.fetchall() if row[0] is not None}
 
     def get_lecture(self, lecture_processing_id: int) -> Lecture:
         return self._get_lecture("lp.lecture_processing_id = :value", lecture_processing_id)

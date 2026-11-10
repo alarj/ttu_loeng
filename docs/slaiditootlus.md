@@ -149,6 +149,8 @@ Vaikimisi lävend peab tulema `.env`-i võtmega `SLIDE_CHANGE_DISTANCE`; kinnita
 
 Worker loeb vaikimisi lävendi `.env`-i võtmega `SLIDE_CHANGE_DISTANCE`, arvutab enne töötlemist tegeliku lävendi ning edastab nii selle kui tundlikkusastme slaiditöötlusele. Mõlemad väärtused salvestatakse `slides.json` ja ühendatud Markdowni tehniliste andmete ossa. Slaiditöö väljund on versioonitud kataloogis `outputs/jobs/<lecture_processing_id>/slides/<operation_id>/`, mistõttu uus sidumine ei kirjuta varasemat tulemust üle.
 
+Kui kasutaja on lisanud PDF-, PPT- või PPTX-slaidifaili, renderdatakse sellest sidumise ajaks `reference/` võrdluspildid. Edukalt lõppenud slaiditöö järel eemaldab worker selle kausta, sest kasutajale vajalikud lõplikud pildid on juba samas versioonikataloogis `images/`. Algne üles laaditud slaidifail säilib `inputs/<lecture_processing_id>/` all; seega rendertakse `reference/` järgmise sidumistöö alguses uuesti. Ebaõnnestunud töö `reference/` kausta ei eemalda, et veaotsinguks vajalikud vaheartefaktid säiliksid.
+
 ## 10. Slaidi pealkiri ja tekstituvastus
 
 Tesseracti ei kasutata põhikaadrite muutuse tuvastamiseks. OCR käivitatakse alles stabiilsel slaidikandidaadil. Pealkirjakandidaat leitakse slaidi ülemisest osast, arvestades teksti asukohta ja suurust.
