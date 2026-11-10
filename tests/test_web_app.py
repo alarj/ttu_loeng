@@ -15,6 +15,7 @@ from lecture_notes.web.app import _validate_google_profile, create_app
 from lecture_notes.web.models import Course, Lecture, Operation, User
 from lecture_notes.web.services import VideoStream
 from lecture_notes.web.settings import WebSettings
+from storage_test_utils import FileStorage
 
 
 class FakeRepository:
@@ -113,6 +114,7 @@ class WebAppTests(unittest.TestCase):
             ),
             repository=FakeRepository(role),
             ords_client=FakeOrds(),
+            storage=FileStorage(root),
         )
         return TestClient(app, base_url="https://ttu-loeng.fun-o.eu")
 

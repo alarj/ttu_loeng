@@ -118,7 +118,7 @@ docker compose --profile slides run --rm slides process \
 
 ## 6. Väljundid
 
-Püsivad tööartefaktid asuvad hostis vaikimisi `/srv/ttu-loeng/outputs/` ja konteineris `/runtime/outputs/`.
+Püsivad tööartefaktid asuvad OCI Object Storage'i ämbris `ttu_loeng_files`: sisendid prefiksi `inputs/` ja tulemused prefiksi `outputs/` all. Brauser ei saa OCI PAR-aadresse; FastAPI loeb artefakte serveripoolel. OCI prefix-PAR-id seadistatakse `.env`-is võtmetega `OCI_INPUTS_R`, `OCI_INPUTS_RW`, `OCI_OUTPUTS_R` ja `OCI_OUTPUTS_RW`.
 
 ```text
 outputs/jobs/<lecture_processing_id>/
@@ -131,11 +131,10 @@ outputs/jobs/<lecture_processing_id>/
     ├── run.json
     ├── slides.json
     ├── transcript_with_slides.md
-    ├── images/                    # lõplikud Markdownis viidatud pildid
-    └── reference/                 # tööaegne võrdlusmaterjal, eemaldatakse edu järel
+    └── images/                    # lõplikud Markdownis viidatud pildid
 ```
 
-Kui kasutaja on lisanud slaidifaili, renderdatakse sellest `reference/` kausta tööaegsed võrdluspildid. Eduka slaiditöö järel eemaldab worker selle kausta; algne üles laaditud slaidifail jääb `inputs/<lecture_processing_id>/` alla ning seda kasutatakse järgmisel sidumisel uuesti. Ajutised allikafailid asuvad runtime'i `work/` kataloogis. Internetist uuesti hangitavat audiot ega videot ei säilitata pärast töö lõppu.
+Kui kasutaja on lisanud slaidifaili, on see OCI `inputs/<lecture_processing_id>/` all. Worker laeb selle ja ASR-i JSON-i töö ajaks lokaalsesse `work/` kataloogi, renderdab `reference/` võrdluspildid lokaalselt ning eemaldab need eduka slaiditöö järel. OCI-sse jõuavad ainult lõplikud JSON-, Markdown- ja `images/`-failid; internetist uuesti hangitavat audiot ega videot ei säilitata pärast töö lõppu.
 
 ## 7. Piirangud
 

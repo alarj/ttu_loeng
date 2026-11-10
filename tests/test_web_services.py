@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from lecture_notes.web.models import Lecture, Operation, UploadInput
 from lecture_notes.web.ords import OrdsError
 from lecture_notes.web.services import LectureService, ValidationError
+from storage_test_utils import FileStorage
 
 
 RESOLVER = {
@@ -153,7 +154,7 @@ class LectureServiceTests(unittest.TestCase):
     def service(self, root: Path, *, fail_asr: bool = False):
         repository = FakeRepository()
         ords = FakeOrds(fail_asr)
-        service = LectureService(repository, ords, root)
+        service = LectureService(repository, ords, root, FileStorage(root))
         service.resolve = lambda url: RESOLVER
         return service, repository, ords
 
@@ -181,7 +182,7 @@ class LectureServiceTests(unittest.TestCase):
             self.assertEqual(ords.calls[1]["previous_job_id"], 100)
             stored = repository.tx.uploads[0][1]
             self.assertEqual(stored.sha256, "61085577d24c91de3d8b696fefde88e25e80a548875027de4df4c7bff4f79926")
-            self.assertEqual(stored.absolute_path.read_bytes(), b"slide data")
+            self.assertEqual(service.storage.read_bytes(stored.relative_path), b"slide data")
 
     def test_slides_are_not_registered_when_asr_registration_fails(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -236,7 +237,7 @@ class LectureServiceTests(unittest.TestCase):
             combined.parent.mkdir(parents=True)
             transcript.write_text("transcript", encoding="utf-8")
             combined.write_text("combined", encoding="utf-8")
-            self.assertEqual(service.result_path(repository.public_lecture), combined)
+            self.assertEqual(service.result_path(repository.public_lecture), combined.relative_to(root))
 
     def test_public_sharing_requires_transcript_with_slides(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -268,7 +269,7 @@ class LectureServiceTests(unittest.TestCase):
             combined.parent.mkdir(parents=True)
             combined.write_text("combined", encoding="utf-8")
             _, path = service.public_result("public-id")
-            self.assertEqual(path, combined)
+            self.assertEqual(path, combined.relative_to(root))
 
     def test_download_archive_contains_named_markdown_and_referenced_images(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -320,7 +321,7 @@ class LectureServiceTests(unittest.TestCase):
             image.parent.mkdir(parents=True)
             (image.parent.parent / "transcript_with_slides.md").write_text("combined", encoding="utf-8")
             image.write_bytes(b"png")
-            self.assertEqual(service.slide_image_path(repository.public_lecture, "slide_001.png"), image)
+            self.assertEqual(service.slide_image_path(repository.public_lecture, "slide_001.png"), image.relative_to(root))
             self.assertIsNone(service.slide_image_path(repository.public_lecture, "../slide_001.png"))
             self.assertIsNone(service.slide_image_path(repository.public_lecture, "slide_001.svg"))
 
@@ -358,6 +359,21 @@ class LectureServiceTests(unittest.TestCase):
                 [version.attempt_number for version in service.slide_versions(repository.public_lecture)],
                 [1, 2],
             )
+
+    def test_latest_slide_version_is_selected_when_default_is_missing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            service, repository, _ = self.service(root)
+            repository.public_lecture.operations.append(
+                Operation(42, "slides", 2, 102, slide_sensitivity_level=2, local_outcome="SUCCEEDED")
+            )
+            for operation_id in (41, 42):
+                path = root / f"outputs/jobs/20/slides/{operation_id}/transcript_with_slides.md"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("combined", encoding="utf-8")
+
+            self.assertEqual(service.selected_slide_version(repository.public_lecture).operation_id, 42)
+
 
     def test_soft_delete_targets_requested_lecture(self):
         with tempfile.TemporaryDirectory() as directory:

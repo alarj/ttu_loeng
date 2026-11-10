@@ -247,36 +247,25 @@ Algne `transcript.json` ja `transcript.md` jäävad muutmata. Ühendatud väljun
 
 ## 11. Artefaktid ja kataloogistruktuur
 
-Git-repositoorium sisaldab koodi, konfiguratsiooni, võrguvabu teste ja dokumentatsiooni. Käitusaegsed failid asuvad hostis `/srv/ttu-loeng` ning konteineris `/runtime`.
+Git-repositoorium sisaldab koodi, konfiguratsiooni, võrguvabu teste ja dokumentatsiooni. Püsivad sisendid ja tulemused asuvad OCI Object Storage'i ämbris `ttu_loeng_files`, vastavalt prefiksites `inputs/` ja `outputs/`. Hostis `/srv/ttu-loeng` ning konteineris `/runtime` paiknevad ainult tööaegne `work/`, mudelite vahemälu, kodukataloog ja logid.
 
 ```text
 /srv/ttu-loeng/
-├── outputs/
-│   ├── resolver.json
-│   ├── lessons/<lesson-id>/
-│   │   ├── lesson.json
-│   │   ├── media.json
-│   │   ├── slides.json
-│   │   └── run.json
-│   └── jobs/<job-id>/
-│       ├── run.json
-│       ├── transcript/
-│       │   ├── run.json
-│       │   ├── transcript.json
-│       │   └── transcript.md
-│       ├── slides/
-│       │   ├── run.json
-│       │   ├── slides.json
-│       │   └── images/
-│       └── result/
-│           └── transcript_with_slides.md
-├── work/<job-id>/
+├── work/jobs/<lecture_processing_id>/
+│   ├── transcript/                # OCI-st toodud või ajutine ASR-väljund
+│   ├── slides/<operation_id>/
+│   │   └── reference/             # ajutised võrdluspildid, mitte OCI artefakt
+│   └── logs/
 ├── models/huggingface/
-├── cache/
 └── home/
 ```
 
-Konteinerid kirjutavad hosti mitte-root kasutaja UID/GID-ga. Püsiva väljundi failid kirjutatakse võimaluse korral atomaarse failivahetusega.
+OCI objektivõtmed kasutavad sama loogilist kuju: `inputs/<lecture_processing_id>/...`,
+`outputs/submissions/<submission_public_id>/resolver.json` ja
+`outputs/jobs/<lecture_processing_id>/...`. Worker kirjutab lõpliku ASR-i ning
+slaidiversiooni OCI-sse alles eduka protsessi järel; `reference/`, audio ja video
+jäävad lokaalseks ajutiseks tööaineks. Konteinerid kirjutavad hosti mitte-root
+kasutaja UID/GID-ga.
 
 ## 12. Töö olek ja korduvkasutus
 
@@ -350,7 +339,7 @@ Slaidide puudumine või slaiditöötluse viga ei muuda edukat transkriptsiooni n
 - Slaidipildid ja transkript säilivad püsiva väljundina.
 - Enne veebiliidese avaldamist tuleb eraldi hinnata loengumaterjalide säilitamise ja jagamise õigusi.
 
-MVP2 töötlusmootor ei vaja andmebaasi. MVP3 veebirakendus kasutab Oracle Always Free andmebaasis projektile eraldatud oma skeemi loengutöötluste, ORDS-i tööseoste ja üleslaadimiste hoidmiseks. FastAPI ja worker ühenduvad sama rakenduse skeemiga otse `python-oracledb` ühenduste pooli kaudu; ORDS-i HTTP API-d kasutatakse ainult serveriülese tööjärjekorra jaoks. Mahukad failid jäävad fikseeritud kataloogistruktuuriga failisüsteemi ja neid kirjeldavad olemasolevad manifestid. Andmemudel on failis [`../db/erd.md`](../db/erd.md).
+MVP2 töötlusmootor ei vaja andmebaasi. MVP3 veebirakendus kasutab Oracle Always Free andmebaasis projektile eraldatud oma skeemi loengutöötluste, ORDS-i tööseoste ja üleslaadimiste hoidmiseks. FastAPI ja worker ühenduvad sama rakenduse skeemiga otse `python-oracledb` ühenduste pooli kaudu; ORDS-i HTTP API-d kasutatakse ainult serveriülese tööjärjekorra jaoks. Püsivad failid asuvad OCI Object Storage'i fikseeritud objektivõtmetega; FastAPI vahendab nende lugemise autenditud kasutajale ning PAR-e brauserile ei avalda. Andmemudel on failis [`../db/erd.md`](../db/erd.md).
 
 ## 16. Testimine
 

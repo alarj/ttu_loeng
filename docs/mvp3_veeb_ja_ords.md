@@ -111,7 +111,7 @@ Rakenduse loengutöötluse ID seob ühe kasutajale kuvatava loengu, selle slaidi
 }
 ```
 
-Worker leiab `lecture_processing_id` kaudu rakenduse püsivast olekust Echo360 avaliku lingi, lesson ID, fikseeritud ASR-konfiguratsiooni ja väljundkataloogi. ORDS-i parameetrites ei edastata suvalist shellikäsku ega kasutaja määratud failisüsteemiteed.
+Worker leiab `lecture_processing_id` kaudu rakenduse püsivast olekust Echo360 avaliku lingi, lesson ID, fikseeritud ASR-konfiguratsiooni ja OCI Object Storage'i objektivõtmed. ORDS-i parameetrites ei edastata suvalist shellikäsku ega kasutaja määratud failisüsteemiteed. Sisendid ning valmis artefaktid loetakse ja kirjutatakse serveri kaudu OCI prefix-PAR-idega; tööaegsed failid paiknevad ainult lokaalses `work/` kataloogis.
 
 ### 6.3. Slaiditöötlus
 

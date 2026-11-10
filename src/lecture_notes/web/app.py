@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import mimetypes
 import secrets
 import logging
 import re
@@ -13,7 +14,7 @@ from urllib.parse import quote
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
@@ -28,6 +29,7 @@ from lecture_notes.web.models import UploadInput, User
 from lecture_notes.web.ords import OrdsClient
 from lecture_notes.web.services import ORIGINAL_TRANSCRIPT_VERSION_ID, LectureService, ValidationError
 from lecture_notes.web.settings import OrdsSettings, WebSettings
+from lecture_notes.web.storage import ObjectStorage
 from lecture_notes.web.translations import translate
 
 
@@ -58,6 +60,7 @@ def create_app(
     repository: Any | None = None,
     ords_client: Any | None = None,
     echo_factory: Any | None = None,
+    storage: ObjectStorage | None = None,
 ) -> FastAPI:
     _configure_web_logging()
     settings = app_settings or WebSettings.from_env()
@@ -71,6 +74,7 @@ def create_app(
             app.state.repository,
             app.state.ords,
             settings.runtime_root,
+            storage or ObjectStorage(settings.oci_inputs_r, settings.oci_inputs_rw, settings.oci_outputs_r, settings.oci_outputs_rw),
             **({"echo_factory": echo_factory} if echo_factory else {}),
         )
         yield
@@ -381,7 +385,7 @@ def create_app(
         if version is None and selected_version is None and original_transcript_ready:
             selected_original = True
         result_text = (
-            await run_in_threadpool(result_path.read_text, encoding="utf-8")
+            (await run_in_threadpool(request.app.state.service.read_artifact, result_path)).decode("utf-8")
             if result_path is not None
             else None
         )
@@ -429,7 +433,7 @@ def create_app(
                 result_path = await run_in_threadpool(request.app.state.service.original_transcript_path, lecture)
                 if result_path is None:
                     raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
-                result_text = await run_in_threadpool(result_path.read_text, encoding="utf-8")
+                result_text = (await run_in_threadpool(request.app.state.service.read_artifact, result_path)).decode("utf-8")
                 return JSONResponse(
                     {
                         "operation_id": None,
@@ -447,7 +451,7 @@ def create_app(
             raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request")) from exc
         if version is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
-        result_text = await run_in_threadpool(version.markdown_path.read_text, encoding="utf-8")
+        result_text = (await run_in_threadpool(request.app.state.service.read_artifact, version.markdown_path)).decode("utf-8")
         return JSONResponse(
             {
                 "operation_id": version.operation_id,
@@ -464,7 +468,7 @@ def create_app(
         filename: str,
         request: Request,
         user: User = Depends(current_user),
-    ) -> FileResponse:
+    ) -> Response:
         del user
         try:
             lecture = await run_in_threadpool(request.app.state.service.get_lecture, lecture_id)
@@ -478,7 +482,7 @@ def create_app(
         path = request.app.state.service.slide_image_path(lecture, filename, version)
         if path is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
-        return FileResponse(path)
+        return Response(await run_in_threadpool(request.app.state.service.read_artifact, path), media_type=mimetypes.guess_type(filename)[0] or "application/octet-stream")
 
     @app.get("/lectures/{lecture_id}/slides/{filename}")
     async def lecture_slide(
@@ -486,7 +490,7 @@ def create_app(
         filename: str,
         request: Request,
         user: User = Depends(current_user),
-    ) -> FileResponse:
+    ) -> Response:
         del user
         try:
             lecture = await run_in_threadpool(request.app.state.service.get_lecture, lecture_id)
@@ -495,7 +499,7 @@ def create_app(
         path = request.app.state.service.slide_image_path(lecture, filename)
         if path is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
-        return FileResponse(path)
+        return Response(await run_in_threadpool(request.app.state.service.read_artifact, path), media_type=mimetypes.guess_type(filename)[0] or "application/octet-stream")
 
     @app.get("/lectures/{lecture_id}/video")
     async def lecture_video(
