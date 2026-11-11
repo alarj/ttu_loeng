@@ -15,6 +15,7 @@ from lecture_notes.echo360 import EchoClient, EchoError, build_resolver_manifest
 from lecture_notes.slides import select_video_track_source_by_quality
 from lecture_notes.web.models import Course, Lecture, SlideVersion, StoredUpload, UploadInput
 from lecture_notes.web.ords import OrdsClient, OrdsError
+from lecture_notes.web.slide_cache import SlideCache
 from lecture_notes.web.storage import ObjectStorage
 
 
@@ -58,12 +59,21 @@ class LectureService:
         runtime_root: Path,
         storage: ObjectStorage,
         echo_factory: Callable[[], EchoClient] = EchoClient,
+        slide_cache_root: Path | None = None,
+        slide_cache_max_bytes: int = 5 * 1024 * 1024 * 1024,
+        slide_cache_max_age_seconds: int = 7 * 24 * 60 * 60,
     ) -> None:
         self.repository = repository
         self.ords = ords
         self.runtime_root = runtime_root
         self.storage = storage
         self.echo_factory = echo_factory
+        self.slide_cache = SlideCache(
+            storage,
+            slide_cache_root or runtime_root / "cache" / "slides",
+            slide_cache_max_bytes,
+            slide_cache_max_age_seconds,
+        )
         self._video_source_lock = threading.Lock()
         self._video_sources: dict[tuple[int, str], tuple[EchoClient, str]] = {}
 
@@ -298,10 +308,7 @@ class LectureService:
     def _slide_result_path(self, lecture_id: int, operation_id: int) -> Path | None:
         base = Path("outputs") / "jobs" / str(lecture_id) / "slides"
         versioned = base / str(operation_id) / "transcript_with_slides.md"
-        if self.storage.exists(versioned.as_posix()):
-            return versioned
-        legacy = base / "transcript_with_slides.md"
-        return legacy if self.storage.exists(legacy.as_posix()) else None
+        return versioned if self.storage.exists(versioned.as_posix()) else None
 
     def publishable_result_path(self, lecture: Lecture, version: SlideVersion | None = None) -> Path | None:
         selected = version or self.selected_slide_version(lecture)
@@ -318,8 +325,21 @@ class LectureService:
         selected = version or self.selected_slide_version(lecture)
         if selected is None:
             return None
-        path = selected.markdown_path.parent / "images" / filename
-        return path if self.storage.exists(path.as_posix()) else None
+        cache = self.slide_cache.prepare(
+            lecture.lecture_processing_id,
+            selected.operation_id,
+            selected.markdown_path,
+        )
+        path = cache / "images" / filename
+        return path if path.is_file() else None
+
+    def read_slide_markdown(self, lecture: Lecture, version: SlideVersion) -> bytes:
+        cache = self.slide_cache.prepare(
+            lecture.lecture_processing_id,
+            version.operation_id,
+            version.markdown_path,
+        )
+        return (cache / "transcript_with_slides.md").read_bytes()
 
     def read_artifact(self, path: Path) -> bytes:
         return self.storage.read_bytes(path.as_posix())
@@ -417,7 +437,11 @@ class LectureService:
         version: SlideVersion | None,
     ) -> TranscriptArchive:
         title = _safe_filename(lecture.lecture_title or "loeng")
-        markdown = self.read_artifact(markdown_path).decode("utf-8")
+        markdown = (
+            self.read_slide_markdown(lecture, version).decode("utf-8")
+            if version is not None
+            else self.read_artifact(markdown_path).decode("utf-8")
+        )
         image_names = list(dict.fromkeys(MARKDOWN_IMAGE_RE.findall(markdown)))
         images: list[tuple[str, Path]] = []
         for image_name in image_names:
@@ -435,7 +459,7 @@ class LectureService:
                 if images:
                     archive.writestr(f"{root}images/", b"")
                     for image_name, image_path in images:
-                        archive.writestr(f"{root}images/{image_name}", self.read_artifact(image_path))
+                        archive.writestr(f"{root}images/{image_name}", image_path.read_bytes())
             output.seek(0)
         except Exception:
             output.close()

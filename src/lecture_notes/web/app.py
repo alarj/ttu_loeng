@@ -75,6 +75,9 @@ def create_app(
             app.state.ords,
             settings.runtime_root,
             storage or ObjectStorage(settings.oci_inputs_r, settings.oci_inputs_rw, settings.oci_outputs_r, settings.oci_outputs_rw),
+            slide_cache_root=settings.slide_cache_root,
+            slide_cache_max_bytes=settings.slide_cache_max_bytes,
+            slide_cache_max_age_seconds=settings.slide_cache_max_age_seconds,
             **({"echo_factory": echo_factory} if echo_factory else {}),
         )
         yield
@@ -385,7 +388,11 @@ def create_app(
         if version is None and selected_version is None and original_transcript_ready:
             selected_original = True
         result_text = (
-            (await run_in_threadpool(request.app.state.service.read_artifact, result_path)).decode("utf-8")
+            (
+                await run_in_threadpool(request.app.state.service.read_slide_markdown, lecture, selected_version)
+                if selected_version is not None
+                else await run_in_threadpool(request.app.state.service.read_artifact, result_path)
+            ).decode("utf-8")
             if result_path is not None
             else None
         )
@@ -451,7 +458,7 @@ def create_app(
             raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request")) from exc
         if version is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
-        result_text = (await run_in_threadpool(request.app.state.service.read_artifact, version.markdown_path)).decode("utf-8")
+        result_text = (await run_in_threadpool(request.app.state.service.read_slide_markdown, lecture, version)).decode("utf-8")
         return JSONResponse(
             {
                 "operation_id": version.operation_id,
@@ -482,7 +489,11 @@ def create_app(
         path = request.app.state.service.slide_image_path(lecture, filename, version)
         if path is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
-        return Response(await run_in_threadpool(request.app.state.service.read_artifact, path), media_type=mimetypes.guess_type(filename)[0] or "application/octet-stream")
+        return Response(
+            await run_in_threadpool(path.read_bytes),
+            media_type=mimetypes.guess_type(filename)[0] or "application/octet-stream",
+            headers={"Cache-Control": "private, max-age=604800"},
+        )
 
     @app.get("/lectures/{lecture_id}/slides/{filename}")
     async def lecture_slide(
@@ -499,7 +510,11 @@ def create_app(
         path = request.app.state.service.slide_image_path(lecture, filename)
         if path is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request"))
-        return Response(await run_in_threadpool(request.app.state.service.read_artifact, path), media_type=mimetypes.guess_type(filename)[0] or "application/octet-stream")
+        return Response(
+            await run_in_threadpool(path.read_bytes),
+            media_type=mimetypes.guess_type(filename)[0] or "application/octet-stream",
+            headers={"Cache-Control": "private, max-age=604800"},
+        )
 
     @app.get("/lectures/{lecture_id}/video")
     async def lecture_video(
@@ -720,7 +735,7 @@ def _render_markdown(value: str, lecture_id: int, operation_id: int | None = Non
         return f"[{match.group(1)}–{match.group(2)}](#video-at-{start_seconds})"
 
     with_slides = SLIDE_IMAGE_RE.sub(replace_slide, value)
-    return MARKDOWN.render(TRANSCRIPT_TIME_RE.sub(replace_time, with_slides))
+    return MARKDOWN.render(TRANSCRIPT_TIME_RE.sub(replace_time, with_slides)).replace("<img ", "<img loading=\"lazy\" ")
 
 
 async def _verify_google_id_token(id_token: str, client_id: str) -> dict[str, Any]:

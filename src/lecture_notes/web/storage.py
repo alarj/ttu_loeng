@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.parse import quote, urlsplit
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 
 class ObjectStorage:
@@ -34,7 +34,8 @@ class ObjectStorage:
 
     def exists(self, relative_path: str) -> bool:
         try:
-            self.read_bytes(relative_path)
+            with urlopen(Request(self._url(relative_path), method="HEAD"), timeout=60):
+                pass
         except HTTPError as exc:
             if exc.code == 404:
                 return False

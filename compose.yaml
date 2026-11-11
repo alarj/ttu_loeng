@@ -10,12 +10,17 @@ services:
     environment:
       TTU_LOENG_REPO_ROOT: /app
       TTU_LOENG_RUNTIME_ROOT: ${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
+      SLIDE_CACHE_ROOT: /cache/slides
+      SLIDE_CACHE_MAX_BYTES: ${SLIDE_CACHE_MAX_BYTES:-5368709120}
+      SLIDE_CACHE_MAX_AGE_SECONDS: ${SLIDE_CACHE_MAX_AGE_SECONDS:-604800}
     user: "${TTU_LOENG_UID:-1000}:${TTU_LOENG_GID:-1000}"
     volumes:
       - ${TTU_LOENG_RUNTIME_ROOT:?Set TTU_LOENG_RUNTIME_ROOT to a writable host directory}:${TTU_LOENG_CONTAINER_RUNTIME_ROOT:-/runtime}
       - ${ORACLE_CONFIG_DIR:?Set ORACLE_CONFIG_DIR to the Oracle wallet directory}:${ORACLE_CONFIG_DIR}:ro
     expose:
       - "8000"
+    tmpfs:
+      - /cache:rw,size=5g,mode=1777
     restart: unless-stopped
     networks:
       - funo_net

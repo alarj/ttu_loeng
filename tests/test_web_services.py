@@ -274,13 +274,14 @@ class LectureServiceTests(unittest.TestCase):
     def test_download_archive_contains_named_markdown_and_referenced_images(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            service, _, _ = self.service(root)
+            service, repository, _ = self.service(root)
             combined = root / "outputs/jobs/20/slides/41/transcript_with_slides.md"
             image = root / "outputs/jobs/20/slides/41/images/slide_001.png"
             combined.parent.mkdir(parents=True)
             image.parent.mkdir(parents=True)
             combined.write_text("![Slaid](images/slide_001.png)\n", encoding="utf-8")
-            image.write_bytes(b"slide")
+            with zipfile.ZipFile(combined.parent / "images.zip", "w") as source:
+                source.writestr("images/slide_001.png", b"slide")
 
             archive_result = service.download_archive(20)
             with zipfile.ZipFile(io.BytesIO(b"".join(archive_result.body))) as archive:
@@ -296,9 +297,14 @@ class LectureServiceTests(unittest.TestCase):
                 self.assertEqual(archive.read("Loeng 1/Loeng 1.md"), combined.read_bytes())
                 self.assertEqual(archive.read("Loeng 1/images/slide_001.png"), b"slide")
 
-            combined.write_text("![Puuduv](images/missing.png)\n", encoding="utf-8")
-            with self.assertRaisesRegex(ValidationError, "Missing referenced slide image"):
-                service.download_archive(20)
+            missing = root / "outputs/jobs/20/slides/42/transcript_with_slides.md"
+            missing.parent.mkdir(parents=True)
+            missing.write_text("![Puuduv](images/missing.png)\n", encoding="utf-8")
+            repository.public_lecture.operations.append(
+                Operation(42, "slides", 2, 102, slide_sensitivity_level=0, local_outcome="SUCCEEDED")
+            )
+            with self.assertRaises(FileNotFoundError):
+                service.download_archive(20, 42)
 
     def test_original_transcript_download_has_no_images_directory(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -319,9 +325,14 @@ class LectureServiceTests(unittest.TestCase):
             service, repository, _ = self.service(root)
             image = root / "outputs/jobs/20/slides/41/images/slide_001.png"
             image.parent.mkdir(parents=True)
-            (image.parent.parent / "transcript_with_slides.md").write_text("combined", encoding="utf-8")
-            image.write_bytes(b"png")
-            self.assertEqual(service.slide_image_path(repository.public_lecture, "slide_001.png"), image.relative_to(root))
+            (image.parent.parent / "transcript_with_slides.md").write_text(
+                "![Slaid](images/slide_001.png)", encoding="utf-8"
+            )
+            with zipfile.ZipFile(image.parent.parent / "images.zip", "w") as archive:
+                archive.writestr("images/slide_001.png", b"png")
+            cached = service.slide_image_path(repository.public_lecture, "slide_001.png")
+            self.assertEqual(cached.read_bytes(), b"png")
+            self.assertIn("cache/slides/20/41/images/slide_001.png", cached.as_posix())
             self.assertIsNone(service.slide_image_path(repository.public_lecture, "../slide_001.png"))
             self.assertIsNone(service.slide_image_path(repository.public_lecture, "slide_001.svg"))
 

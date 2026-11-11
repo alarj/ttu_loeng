@@ -173,7 +173,8 @@ class WebAppTests(unittest.TestCase):
             output.parent.mkdir(parents=True)
             image.parent.mkdir(parents=True)
             output.write_text("![Slaid](images/slide_001.png)\n", encoding="utf-8")
-            image.write_bytes(b"public-slide")
+            with zipfile.ZipFile(output.parent / "images.zip", "w") as archive:
+                archive.writestr("images/slide_001.png", b"public-slide")
             with self.make_client(root) as client:
                 client.app.state.repository.lecture.operations = [
                     Operation(2, "slides", 1, 2, slide_sensitivity_level=0, local_outcome="SUCCEEDED")
@@ -325,7 +326,8 @@ class WebAppTests(unittest.TestCase):
                 "[00:00:27–00:00:30] Testlause.\n",
                 encoding="utf-8",
             )
-            image.write_bytes(b"slide-image")
+            with zipfile.ZipFile(output.parent / "images.zip", "w") as archive:
+                archive.writestr("images/slide_001.png", b"slide-image")
             with self.make_client(root, "ADMIN") as client:
                 client.app.state.repository.lecture.operations = [
                     Operation(
@@ -360,6 +362,8 @@ class WebAppTests(unittest.TestCase):
                 self.assertIn('id="transcriptVideoContainer"', response.text)
                 self.assertIn('id="transcriptVideo"', response.text)
                 self.assertIn('id="transcriptSecondaryVideo"', response.text)
+                self.assertIn('id="closeTranscriptVideo"', response.text)
+                self.assertIn("Sulge video", response.text)
                 self.assertIn('id="followTranscript"', response.text)
                 self.assertIn("Jälgi teksti", response.text)
                 self.assertIn('href="#video-at-27">00:00:27–00:00:30</a>', response.text)
@@ -367,6 +371,7 @@ class WebAppTests(unittest.TestCase):
                 self.assertIn('src="/lectures/12/slides/2/slide_001.png"', response.text)
                 self.assertIn('id="openReprocessSlidesDialog"', response.text)
                 self.assertIn('id="slideVersionSelect"', response.text)
+                self.assertIn('id="downloadSelectedVersion"', response.text)
                 self.assertIn("Versioon 1 — default", response.text)
                 self.assertNotIn("Versioon 1 (vaikimisi)", response.text)
                 self.assertIn('id="openDefaultSlideVersionDialog"', response.text)
@@ -409,6 +414,8 @@ class WebAppTests(unittest.TestCase):
             combined.parent.mkdir(parents=True)
             raw.write_text("# Algne\n\nIlma slaidideta.\n", encoding="utf-8")
             combined.write_text("# Slaididega\n", encoding="utf-8")
+            with zipfile.ZipFile(combined.parent / "images.zip", "w"):
+                pass
             with self.make_client(root, "USER") as client:
                 client.app.state.repository.lecture.operations = [
                     Operation(2, "slides", 1, 2, slide_sensitivity_level=0, local_outcome="SUCCEEDED")
@@ -486,6 +493,8 @@ class WebAppTests(unittest.TestCase):
                 combined = root / "outputs/jobs/12/slides/2/transcript_with_slides.md"
                 combined.parent.mkdir(parents=True)
                 combined.write_text("combined", encoding="utf-8")
+                with zipfile.ZipFile(combined.parent / "images.zip", "w"):
+                    pass
                 ready_detail = client.get("/lectures/12")
                 self.assertIn("Avalik otselink", ready_detail.text)
                 ready_csrf = ready_detail.text.split('name="csrf_token" value="', 1)[1].split('"', 1)[0]
