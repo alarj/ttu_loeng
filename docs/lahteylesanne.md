@@ -168,6 +168,7 @@ Iga uuesti sidumine loob uue slaiditöötluse tulemuse versiooni. Varasemat tule
 UTF-8 Markdown-fail, mis sisaldab:
 
 - loengu nime ja põhilisi metaandmeid;
+- kasutatud kõnetuvastusmudeli nime, heli kestust ja transkriptsioonisegmentide arvu;
 - ajatemplitega toimetamata transkripti;
 - slaidivahetuste tähiseid;
 - slaidipilte või suhtelisi viiteid pildifailidele;
@@ -283,6 +284,8 @@ MVP3 peab lisama olemasolevale töötlusmootorile:
 - aegunud sessiooniga kaitstud HTML-lehelt puhtale Google'i sisselogimisvaatele suunamise;
 - sisselogimiseta slaididega ühendatud valmis Markdowni ja selle piltide ZIP-paketi allalaadimise ainult konkreetse loengu väärtustatud `public_id` otselingi kaudu; avalikku linki ei saa luua enne selle tulemuse valmimist ning tööde nimekiri ei ole anonüümselt nähtav;
 - ühise teenusekihi, mida kasutavad HTML-marsruudid ja mille peale lisatakse järgmises etapis JSON API.
+- loengu „Vaata” modalis Echo360 põhi- ja teisese videovoo võrdse suurusega sünkroonitud kuvamise ühe ühise juhtimisega; teisene video on vaigistatud ja eraldi mittejuhitav ning selle puudumisel kuvatakse põhivideo kahe video rea ühe veeru laiusega keskel;
+- video aja järgi aktiivse transkriptisegmendi nähtava helerohelise tausta ja rõhutatud ajamärgiga märkimise ning automaatse tekstijälgimise; käsitsi kerimine peatab automaatse kerimise, kuid mitte jooksva segmendi märkimist, ning „Jälgi teksti” taastab jooksva segmendi nähtavuse ja automaatse jälgimise;
 
 ORDS on ainus tööjärjekorra, järjestuse ja käivitamisloa autoriteet. Rakendus ei pea kohalikku järjekorda, ei vali ise järgmist tööd ega käivita ressursimahukat tööd ilma ORDS-i claim'ita. ORDS ei täida töö sisu: ASR-i ja slaiditöötluse protsessi, failid, logid ja artefaktid haldab `ttu_loeng` rakendus.
 

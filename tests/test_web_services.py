@@ -415,7 +415,15 @@ class LectureServiceTests(unittest.TestCase):
                                             "width": 640,
                                             "height": 360,
                                         }
-                                    ]
+                                    ],
+                                    "secondaryFiles": [
+                                        {
+                                            "s3Url": "https://content.echo360.org.uk/camera.mp4",
+                                            "size": 120,
+                                            "width": 640,
+                                            "height": 360,
+                                        }
+                                    ],
                                 }
                             }
                         }
@@ -442,8 +450,15 @@ class LectureServiceTests(unittest.TestCase):
             self.assertEqual(echo.range_headers, ["bytes=10-15"])
             self.assertEqual(list(Path(directory).rglob("*")), [])
 
+            secondary = service.video_stream(20, "bytes=20-25", "secondary")
+            self.assertEqual(b"".join(secondary.body), b"abcdef")
+            self.assertEqual(echo.source_url, "https://content.echo360.org.uk/camera.mp4")
+            self.assertEqual(echo.range_headers, ["bytes=10-15", "bytes=20-25"])
+
             with self.assertRaisesRegex(ValidationError, "Invalid video byte range"):
                 service.video_stream(20, "bytes=0-1,10-11")
+            with self.assertRaisesRegex(ValidationError, "Invalid video track"):
+                service.video_stream(20, None, "tertiary")
 
 
 if __name__ == "__main__":

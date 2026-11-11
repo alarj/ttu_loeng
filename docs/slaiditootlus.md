@@ -227,6 +227,8 @@ Automaatse vastavuse piirid määratakse kontrollmaterjali põhjal. Ebaselget va
 
 Slaidivahetuse tõttu ei lõhuta ega kirjutata ümber olemasolevat TalTechNLP transkriptsioonisegmenti.
 
+Uue slaididega ühendatud Markdowni loengu metaandmed säilitavad ASR-i JSON-ist kasutatud kõnetuvastusmudeli nime, heli kestuse ja transkriptsioonisegmentide arvu. Muudatus rakendub uutele slaiditöötluse väljunditele; varem loodud Markdown-faile tagantjärele ei muudeta.
+
 Iga slaidi ilmumisaeg paigutatakse ajaliselt lähima segmendipiiri juurde. Slaidiviide sisaldab:
 
 - slaidi numbrit;

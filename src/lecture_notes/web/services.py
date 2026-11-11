@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable
 
 from lecture_notes.echo360 import EchoClient, EchoError, build_resolver_manifest
-from lecture_notes.slides import select_video_source_by_quality
+from lecture_notes.slides import select_video_track_source_by_quality
 from lecture_notes.web.models import Course, Lecture, SlideVersion, StoredUpload, UploadInput
 from lecture_notes.web.ords import OrdsClient, OrdsError
 from lecture_notes.web.storage import ObjectStorage
@@ -65,7 +65,7 @@ class LectureService:
         self.storage = storage
         self.echo_factory = echo_factory
         self._video_source_lock = threading.Lock()
-        self._video_sources: dict[int, tuple[EchoClient, str]] = {}
+        self._video_sources: dict[tuple[int, str], tuple[EchoClient, str]] = {}
 
     def resolve(self, public_url: str) -> dict[str, Any]:
         return build_resolver_manifest(self.echo_factory(), public_url.strip())
@@ -324,13 +324,15 @@ class LectureService:
     def read_artifact(self, path: Path) -> bytes:
         return self.storage.read_bytes(path.as_posix())
 
-    def video_stream(self, lecture_id: int, range_header: str | None) -> VideoStream:
+    def video_stream(self, lecture_id: int, range_header: str | None, track: str = "primary") -> VideoStream:
         if range_header and VIDEO_RANGE_RE.fullmatch(range_header.strip()) is None:
             raise ValidationError("INVALID_VIDEO_RANGE", "Invalid video byte range")
+        if track not in {"primary", "secondary"}:
+            raise ValidationError("INVALID_VIDEO_TRACK", "Invalid video track")
 
         response = None
         for attempt in range(2):
-            client, source_url = self._video_source(lecture_id, refresh=attempt > 0)
+            client, source_url = self._video_source(lecture_id, track=track, refresh=attempt > 0)
             try:
                 response = client.open_media_stream(source_url, range_header)
                 break
@@ -354,11 +356,12 @@ class LectureService:
             body=_stream_chunks(response),
         )
 
-    def _video_source(self, lecture_id: int, *, refresh: bool) -> tuple[EchoClient, str]:
+    def _video_source(self, lecture_id: int, *, track: str, refresh: bool) -> tuple[EchoClient, str]:
+        cache_key = (lecture_id, track)
         with self._video_source_lock:
             if refresh:
-                self._video_sources.pop(lecture_id, None)
-            cached = self._video_sources.get(lecture_id)
+                self._video_sources.pop(cache_key, None)
+            cached = self._video_sources.get(cache_key)
             if cached is not None:
                 return cached
 
@@ -370,11 +373,15 @@ class LectureService:
             client.open_public_session(course.echo_public_url)
             media = client.get_lesson_media(lecture.echo_lesson_id)
             try:
-                source_url, _, _, _ = select_video_source_by_quality(media, prefer_highest=False)
+                source_url, _, _, _ = select_video_track_source_by_quality(
+                    media,
+                    track=track,
+                    prefer_highest=False,
+                )
             except ValueError as exc:
                 raise ValidationError("VIDEO_NOT_AVAILABLE", "Echo360 video is not available") from exc
             result = (client, source_url)
-            self._video_sources[lecture_id] = result
+            self._video_sources[cache_key] = result
             return result
 
     def public_result(self, public_id: str) -> tuple[Lecture, Path]:

@@ -28,6 +28,8 @@ ET = {
     "echo_classroom_url": "Echo360 classroom-vaade",
     "echo_session_note": "Echo360 leht avaneb, kui brauseris on juba kehtiv Echo360 sessioon.",
     "close": "Sulge",
+    "loading": "Laadin andmeid…",
+    "follow_transcript": "Jälgi teksti",
     "view_result": "Vaata transkripti",
     "slide_version": "Versioon",
     "original_transcript": "Algne transkript (ilma slaidideta)",

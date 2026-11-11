@@ -4,7 +4,7 @@
 {% endblock %}
 {% block content %}
 {% if message %}<div class="message">{{ t(message) }}</div>{% endif %}
-<section class="card course-index-card">
+<section class="card course-index-card" data-auto-refresh="true">
   <h2>{{ t("courses") }}</h2>
   {% if courses %}
   <nav class="course-list" aria-label="{{ t('courses') }}">

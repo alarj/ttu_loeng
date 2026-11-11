@@ -214,12 +214,14 @@ class WebAppTests(unittest.TestCase):
                 self.login(client)
                 index = client.get("/")
                 self.assertIn("Testkursus", index.text)
+                self.assertIn('data-auto-refresh="true"', index.text)
                 self.assertIn(">Loengud</a>", index.text)
                 self.assertIn("Kõik loengud ja nendes avaldatud materjalid kuuluvad Tallinna Tehnikaülikoolile ja / või loengu autorile.", index.text)
                 self.assertIn("Loengute transkriptsioonid on loodud AI poolt TalTechNLP kõnetuvastusmudeliga loengusalvestiste heliribast.", index.text)
                 self.assertNotIn("Testloeng", index.text)
                 course = client.get("/courses/course-section-id")
                 self.assertIn("Testloeng", course.text)
+                self.assertIn('data-auto-refresh="true"', course.text)
                 self.assertIn("<h2>Testkursus</h2>", course.text)
                 self.assertIn("← Tagasi", course.text)
                 self.assertIn('class="button-link secondary-button compact-view header-button" href="/"', course.text)
@@ -349,10 +351,17 @@ class WebAppTests(unittest.TestCase):
                 self.login(client)
                 response = client.get("/lectures/12")
                 self.assertEqual(response.status_code, 200)
+                self.assertNotIn('data-auto-refresh="true"', response.text)
+                self.assertIn('id="globalLoadingIndicator"', response.text)
+                self.assertIn("Laadin andmeid…", response.text)
                 self.assertIn('<dialog id="transcriptViewer"', response.text)
-                self.assertIn('data-video-url="/lectures/12/video"', response.text)
+                self.assertIn('data-primary-video-url="/lectures/12/video?track=primary"', response.text)
+                self.assertIn('data-secondary-video-url="/lectures/12/video?track=secondary"', response.text)
                 self.assertIn('id="transcriptVideoContainer"', response.text)
                 self.assertIn('id="transcriptVideo"', response.text)
+                self.assertIn('id="transcriptSecondaryVideo"', response.text)
+                self.assertIn('id="followTranscript"', response.text)
+                self.assertIn("Jälgi teksti", response.text)
                 self.assertIn('href="#video-at-27">00:00:27–00:00:30</a>', response.text)
                 self.assertIn("<h1>Transkript</h1>", response.text)
                 self.assertIn('src="/lectures/12/slides/2/slide_001.png"', response.text)
@@ -426,8 +435,8 @@ class WebAppTests(unittest.TestCase):
                 self.login(client)
                 calls = []
 
-                def video_stream(lecture_id, range_header):
-                    calls.append((lecture_id, range_header))
+                def video_stream(lecture_id, range_header, track):
+                    calls.append((lecture_id, range_header, track))
                     return VideoStream(
                         status_code=206,
                         content_type="video/mp4",
@@ -442,7 +451,7 @@ class WebAppTests(unittest.TestCase):
 
                 client.app.state.service.video_stream = video_stream
                 response = client.get(
-                    "/lectures/12/video",
+                    "/lectures/12/video?track=secondary",
                     headers={"Range": "bytes=27-29"},
                 )
                 self.assertEqual(response.status_code, 206)
@@ -450,7 +459,7 @@ class WebAppTests(unittest.TestCase):
                 self.assertEqual(response.headers["content-type"], "video/mp4")
                 self.assertEqual(response.headers["content-range"], "bytes 27-29/100")
                 self.assertEqual(response.headers["accept-ranges"], "bytes")
-                self.assertEqual(calls, [(12, "bytes=27-29")])
+                self.assertEqual(calls, [(12, "bytes=27-29", "secondary")])
 
     def test_sharing_is_hidden_and_cannot_be_enabled_before_combined_result_exists(self):
         with tempfile.TemporaryDirectory() as directory:

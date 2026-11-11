@@ -233,16 +233,33 @@ def select_video_source(media_payload: dict[str, Any]) -> tuple[str, int | None,
 def select_video_source_by_quality(
     media_payload: dict[str, Any], *, prefer_highest: bool
 ) -> tuple[str, int | None, int | None, int | None]:
+    return select_video_track_source_by_quality(
+        media_payload,
+        track="primary",
+        prefer_highest=prefer_highest,
+    )
+
+
+def select_video_track_source_by_quality(
+    media_payload: dict[str, Any], *, track: str, prefer_highest: bool
+) -> tuple[str, int | None, int | None, int | None]:
+    source_keys = {
+        "primary": "primaryFiles",
+        "secondary": "secondaryFiles",
+    }
+    source_key = source_keys.get(track)
+    if source_key is None:
+        raise ValueError("Unsupported video track")
     video = media_payload.get("video") if isinstance(media_payload.get("video"), dict) else None
     wrapper = video.get("media") if isinstance(video, dict) and isinstance(video.get("media"), dict) else None
     media = wrapper.get("media") if isinstance(wrapper, dict) and isinstance(wrapper.get("media"), dict) else None
     current = media.get("current") if isinstance(media, dict) and isinstance(media.get("current"), dict) else None
-    primary = current.get("primaryFiles") if isinstance(current, dict) else None
-    if not isinstance(primary, list):
-        raise ValueError("Lesson has no primary video source")
-    candidates = [item for item in primary if isinstance(item, dict) and isinstance(item.get("s3Url"), str)]
+    sources = current.get(source_key) if isinstance(current, dict) else None
+    if not isinstance(sources, list):
+        raise ValueError(f"Lesson has no {track} video source")
+    candidates = [item for item in sources if isinstance(item, dict) and isinstance(item.get("s3Url"), str)]
     if not candidates:
-        raise ValueError("Lesson has no downloadable primary video source")
+        raise ValueError(f"Lesson has no downloadable {track} video source")
     if prefer_highest:
         selected = max(candidates, key=lambda item: (item.get("height") or 0, item.get("size") or 0))
     else:
@@ -1117,6 +1134,8 @@ def _render_transcript_with_slides(
         insertions.setdefault(insertion_index, []).append(appearance)
 
     lesson = transcript.get("lesson", {})
+    configuration = transcript.get("configuration", {})
+    audio = transcript.get("audio", {})
     lines = [
         f"# {lesson.get('title', 'Loengu transkript')} — ajatemplitega transkript koos slaididega",
         "",
@@ -1128,15 +1147,23 @@ def _render_transcript_with_slides(
         "",
         f"- Pealkiri: {lesson.get('title', '')}",
         f"- Echo lesson ID: `{lesson.get('lesson_id', '')}`",
-        f"- Transkriptsioonisegmente: {len(segments)}",
-        f"- Slaide: {len(identities)}",
-        f"- Slaidide ilmumisi: {len(appearances)}",
-        f"- Slaidide tuvastamistäpsus: {'vaikimisi' if sensitivity_level == 0 else f'{sensitivity_level:+d}'}",
-        f"- Kasutatud slaidimuutuse lävend: {change_distance:.3f}",
-        "",
-        "## Transkript",
-        "",
     ]
+    if isinstance(configuration, dict) and configuration.get("model_id"):
+        lines.append(f"- Mudel: `{configuration['model_id']}`")
+    if isinstance(audio, dict) and isinstance(audio.get("duration_seconds"), (int, float)):
+        lines.append(f"- Heli kestus: `{_format_hms(float(audio['duration_seconds']))}`")
+    lines.extend(
+        [
+            f"- Segmente: {len(segments)}",
+            f"- Slaide: {len(identities)}",
+            f"- Slaidide ilmumisi: {len(appearances)}",
+            f"- Slaidide tuvastamistäpsus: {'vaikimisi' if sensitivity_level == 0 else f'{sensitivity_level:+d}'}",
+            f"- Kasutatud slaidimuutuse lävend: {change_distance:.3f}",
+            "",
+            "## Transkript",
+            "",
+        ]
+    )
     for index, segment in enumerate(segments):
         lines.extend(_render_slide_insertions(insertions.get(index, []), by_id))
         lines.append(

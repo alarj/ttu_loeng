@@ -505,6 +505,7 @@ def create_app(
     async def lecture_video(
         lecture_id: int,
         request: Request,
+        track: str = "primary",
         user: User = Depends(current_user),
     ) -> StreamingResponse:
         del user
@@ -513,6 +514,7 @@ def create_app(
                 request.app.state.service.video_stream,
                 lecture_id,
                 request.headers.get("range"),
+                track,
             )
         except KeyError as exc:
             raise HTTPException(status.HTTP_404_NOT_FOUND, translate("invalid_request")) from exc

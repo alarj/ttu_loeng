@@ -25,6 +25,7 @@ from lecture_notes.slides import (
     restore_metadata_acronyms,
     select_video_source,
     select_video_source_by_quality,
+    select_video_track_source_by_quality,
     text_similarity,
     token_similarity,
 )
@@ -119,6 +120,25 @@ class SlideSourceTests(unittest.TestCase):
         self.assertEqual(
             select_video_source_by_quality(payload, prefer_highest=True),
             ("https://content.echo360.org.uk/hd.mp4", 300, 1920, 1080),
+        )
+
+    def test_select_secondary_video_track_source(self) -> None:
+        payload = {
+            "video": {
+                "media": {
+                    "media": {
+                        "current": {
+                            "secondaryFiles": [
+                                {"s3Url": "https://content.echo360.org.uk/camera.mp4", "size": 120, "width": 640, "height": 360},
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+        self.assertEqual(
+            select_video_track_source_by_quality(payload, track="secondary", prefer_highest=False),
+            ("https://content.echo360.org.uk/camera.mp4", 120, 640, 360),
         )
 
     def test_slide_text_normalization_and_similarity(self) -> None:
@@ -237,6 +257,8 @@ class SlideSourceTests(unittest.TestCase):
     def test_slide_is_inserted_at_nearest_segment_boundary(self) -> None:
         transcript = {
             "lesson": {"lesson_id": "lesson-1", "title": "Test"},
+            "configuration": {"model_id": "TalTechNLP/whisper-large-v3-turbo-et-verbatim-2604"},
+            "audio": {"duration_seconds": 9928.0},
             "segments": [
                 {"start_seconds": 0.0, "end_seconds": 10.0, "text": "Esimene."},
                 {"start_seconds": 10.0, "end_seconds": 20.0, "text": "Teine."},
@@ -258,6 +280,9 @@ class SlideSourceTests(unittest.TestCase):
         self.assertLess(result.index("### Slaid 1"), result.index("[00:00:10–00:00:20]"))
         self.assertGreater(result.index("### Slaid 1"), result.index("[00:00:00–00:00:10]"))
         self.assertNotIn("### Slaid 1 — Pealkiri", result)
+        self.assertIn("- Mudel: `TalTechNLP/whisper-large-v3-turbo-et-verbatim-2604`", result)
+        self.assertIn("- Heli kestus: `02:45:28`", result)
+        self.assertIn("- Segmente: 2", result)
 
     def test_confirmed_reference_title_is_shown_in_transcript(self) -> None:
         transcript = {

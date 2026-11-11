@@ -49,6 +49,10 @@ MVP2 käigus valminud L03 ja L08.1 tulemused on lisatud rakenduse andmebaasi aja
 
 Sisselogitud kasutaja valib esmalt `SUBMISSIONS.COURSE_TITLE` järgi järjestatud kursuse. Kursuse vaates kuvatakse selle loengud `LECTURE_PROCESSINGS.LECTURE_TITLE` järgi järjestatud kompaktses nimekirjas koos Echo360 tegeliku toimumiskuupäevaga. Administraator saab sulgeda konkreetse loengutöötluse soft delete'iga. Uue loengu lisamisel võib administraator valida olemasoleva kursuse nime järgi või sisestada uue Echo360 avaliku kursuselingi.
 
+Loengu „Vaata” modalis avab transkripti ajamärk Echo360 põhi- ja teisese videovoo võrdse suurusega sünkroonitud pleieritena. Põhivideo juhtnupud juhivad mõlemat videot ning teisene video on kaja vältimiseks vaigistatud ja eraldi mittejuhitav. Kui teisest videovoogu ei ole, jääb põhivideo kahe video rea ühe veeru laiuseks ja paikneb keskel. Video aja järgi märgitakse aktiivne transkriptisegment nähtava helerohelise tausta ja rõhutatud ajamärgiga ning tekst kerib automaatselt kaasa. Kasutaja käsitsi kerimine peatab ainult automaatse jälgimise; aktiivse segmendi märkimine jätkub ning nupp „Jälgi teksti” toob jooksva segmendi uuesti nähtavale.
+
+Kõigi veebilehtede ühine laadimisindikaator kuvab andmete toomise ajal keerleva rõnga ja teksti „Laadin andmeid…“. Indikaator rakendub sisemistele lehevahetustele, vormide saatmisele ja JavaScripti andmepäringutele; faili allalaadimine ei jäta lehte blokeeritud laadimisolekusse.
+
 ## 5. Käivitamine
 
 Kopeeri `.env.example` failiks `.env`, täida Oracle'i ja ORDS-i saladused, määra `GOOGLE_CLIENT_ID` ning genereeri `SESSION_SECRET`. Google Console'i Authorized JavaScript origins loendis peab olema `https://ttu-loeng.fun-o.eu`. Google Client Secretit ega redirect URI-t see autentimisvoog ei kasuta.
@@ -135,6 +139,8 @@ outputs/jobs/<lecture_processing_id>/
 ```
 
 Kui kasutaja on lisanud slaidifaili, on see OCI `inputs/<lecture_processing_id>/` all. Worker laeb selle ja ASR-i JSON-i töö ajaks lokaalsesse `work/` kataloogi, renderdab `reference/` võrdluspildid lokaalselt ning eemaldab need eduka slaiditöö järel. OCI-sse jõuavad ainult lõplikud JSON-, Markdown- ja `images/`-failid; internetist uuesti hangitavat audiot ega videot ei säilitata pärast töö lõppu.
+
+Uued slaididega ühendatud Markdown-väljundid kuvavad loengu metaandmetes ka ASR-i mudeli nime, heli kestuse ja transkriptsioonisegmentide arvu. Olemasolevaid varem loodud väljundeid tagantjärele ei muudeta.
 
 ## 7. Piirangud
 

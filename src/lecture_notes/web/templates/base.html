@@ -9,6 +9,12 @@
   <script src="{{ url_for('static', path='/app.js') }}?v={{ static_version }}" defer></script>
 </head>
 <body data-poll-interval="{{ poll_interval_seconds }}">
+  <div id="globalLoadingIndicator" class="global-loading" role="status" aria-live="polite" aria-label="{{ t('loading') }}" hidden>
+    <div class="global-loading-panel">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <span>{{ t("loading") }}</span>
+    </div>
+  </div>
   <div class="wrap">
     <header class="site-header">
       <div>
