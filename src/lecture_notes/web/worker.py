@@ -12,6 +12,7 @@ from typing import Any
 from lecture_notes.web.database import OracleRepository
 from lecture_notes.web.ords import OrdsClient, OrdsError
 from lecture_notes.web.settings import OrdsSettings, WorkerSettings
+from lecture_notes.web.storage import ObjectStorage
 
 
 LOGGER = logging.getLogger("lecture_notes.worker")
@@ -26,12 +27,14 @@ class Worker:
         *,
         sleeper: Any = time.sleep,
         process_factory: Any = subprocess.Popen,
+        storage: ObjectStorage | None = None,
     ) -> None:
         self.repository = repository
         self.ords = ords
         self.settings = settings
         self.sleeper = sleeper
         self.process_factory = process_factory
+        self.storage = storage or ObjectStorage(settings.oci_inputs_r, settings.oci_inputs_rw, settings.oci_outputs_r, settings.oci_outputs_rw)
         self.identity = {
             "worker_instance_id": f"ttu-loeng-{uuid.uuid4()}",
             "host_id": settings.host_id,
@@ -92,10 +95,17 @@ class Worker:
             self._fail_without_process(job, operation_id, "INVALID_JOB_TYPE", "job_type_code does not match")
             return
 
-        command = self._command(context)
+        work_root = self.settings.runtime_root / "work" / "jobs" / str(context["lecture_processing_id"])
+        try:
+            self._stage_inputs(context, work_root)
+            command = self._command(context, work_root)
+        except Exception as exc:
+            LOGGER.exception("Worker input staging failed operation_id=%d", operation_id)
+            self._fail_without_process(job, operation_id, "INPUT_STAGE_FAILED", str(exc))
+            return
         log_path = (
             self.settings.runtime_root
-            / "outputs"
+            / "work"
             / "jobs"
             / str(context["lecture_processing_id"])
             / "logs"
@@ -134,23 +144,38 @@ class Worker:
             log.close()
 
         outcome = "SUCCEEDED" if return_code == 0 else "FAILED"
-        if outcome == "SUCCEEDED" and context["operation_type"] == "slides":
-            self._remove_reference_slides(context)
+        if outcome == "SUCCEEDED":
+            try:
+                self._upload_outputs(context, work_root)
+                if context["operation_type"] == "slides":
+                    self._remove_reference_slides(work_root, context)
+            except Exception as exc:
+                LOGGER.exception("Worker output upload failed operation_id=%d", operation_id)
+                outcome = "FAILED"
+                return_code = 1
+                failure_code = "OUTPUT_UPLOAD_FAILED"
+                failure_message = str(exc)
+            else:
+                failure_code = None
+                failure_message = None
+        else:
+            failure_code = "PROCESS_EXIT"
+            failure_message = f"Process exited with code {return_code}"
         self.repository.mark_operation_completed(
             operation_id,
             outcome,
-            None if return_code == 0 else "PROCESS_EXIT",
-            None if return_code == 0 else f"Process exited with code {return_code}",
+            failure_code,
+            failure_message,
         )
         self.ords.complete(
             job,
             self.identity,
             outcome=outcome,
             exit_code=return_code,
-            end_reason="COMPLETED" if return_code == 0 else "PROCESS_EXIT",
+            end_reason="COMPLETED" if outcome == "SUCCEEDED" else (failure_code or "PROCESS_EXIT"),
         )
 
-    def _remove_reference_slides(self, context: dict[str, Any]) -> None:
+    def _remove_reference_slides(self, work_root: Path, context: dict[str, Any]) -> None:
         """Remove rendered matching inputs after a successful slides operation.
 
         The original user file remains under ``inputs/<lecture_processing_id>`` and
@@ -158,10 +183,7 @@ class Worker:
         already been written to the sibling ``images`` directory at this point.
         """
         reference_dir = (
-            self.settings.runtime_root
-            / "outputs"
-            / "jobs"
-            / str(context["lecture_processing_id"])
+            work_root
             / "slides"
             / str(context["operation_id"])
             / "reference"
@@ -184,10 +206,31 @@ class Worker:
                 except OrdsError:
                     LOGGER.exception("ORDS heartbeat failed; process continues")
 
-    def _command(self, context: dict[str, Any]) -> list[str]:
+    def _stage_inputs(self, context: dict[str, Any], work_root: Path) -> None:
+        if context["operation_type"] == "slides":
+            lecture_id = str(context["lecture_processing_id"])
+            raw = f"outputs/jobs/{lecture_id}/transcript/{self.settings.asr_configuration_id}/transcript.json"
+            self.storage.read_file(raw, work_root / "transcript" / self.settings.asr_configuration_id / "transcript.json")
+            if context.get("slides_relative_path"):
+                key = context["slides_relative_path"]
+                self.storage.read_file(key, work_root / key)
+
+    def _upload_outputs(self, context: dict[str, Any], work_root: Path) -> None:
+        lecture_id = str(context["lecture_processing_id"])
+        relative = (
+            Path("transcript") / self.settings.asr_configuration_id
+            if context["operation_type"] == "asr"
+            else Path("slides") / str(context["operation_id"])
+        )
+        source = work_root / relative
+        for path in source.rglob("*"):
+            if path.is_file() and "reference" not in path.parts:
+                relative = path.relative_to(work_root).as_posix()
+                self.storage.write_file(f"outputs/jobs/{lecture_id}/{relative}", path)
+
+    def _command(self, context: dict[str, Any], output_root: Path) -> list[str]:
         lecture_id = str(context["lecture_processing_id"])
         operation_id = str(context["operation_id"])
-        output_root = self.settings.runtime_root / "outputs" / "jobs" / lecture_id
         if context["operation_type"] == "asr":
             return [
                 "lecture-notes-asr",
@@ -235,7 +278,7 @@ class Worker:
                 str(sensitivity_level),
             ]
             if context.get("slides_relative_path"):
-                command.extend(["--slides-input", str(self.settings.runtime_root / context["slides_relative_path"])])
+                command.extend(["--slides-input", str(output_root / context["slides_relative_path"])])
             return command
         raise ValueError(f"Unsupported operation type: {context['operation_type']}")
 

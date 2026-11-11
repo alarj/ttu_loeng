@@ -41,6 +41,10 @@ class WebSettings:
     session_secret: str
     runtime_root: Path
     ui_status_poll_interval_seconds: int
+    oci_inputs_r: str = ""
+    oci_inputs_rw: str = ""
+    oci_outputs_r: str = ""
+    oci_outputs_rw: str = ""
 
     @classmethod
     def from_env(cls) -> "WebSettings":
@@ -50,6 +54,10 @@ class WebSettings:
             session_secret=_required("SESSION_SECRET"),
             runtime_root=Path(os.getenv("TTU_LOENG_RUNTIME_ROOT", "/srv/ttu-loeng")).resolve(),
             ui_status_poll_interval_seconds=_positive_int("UI_STATUS_POLL_INTERVAL_SECONDS", 30),
+            oci_inputs_r=_required("OCI_INPUTS_R"),
+            oci_inputs_rw=_required("OCI_INPUTS_RW"),
+            oci_outputs_r=_required("OCI_OUTPUTS_R"),
+            oci_outputs_rw=_required("OCI_OUTPUTS_RW"),
         )
 
 
@@ -88,6 +96,10 @@ class WorkerSettings:
     slide_coarse_seconds: float
     slide_refine_seconds: float
     slide_change_distance: float
+    oci_inputs_r: str = ""
+    oci_inputs_rw: str = ""
+    oci_outputs_r: str = ""
+    oci_outputs_rw: str = ""
 
     @classmethod
     def from_env(cls) -> "WorkerSettings":
@@ -102,5 +114,9 @@ class WorkerSettings:
             slide_coarse_seconds=float(os.getenv("SLIDE_COARSE_INTERVAL_SECONDS", "20")),
             slide_refine_seconds=float(os.getenv("SLIDE_REFINE_INTERVAL_SECONDS", "2")),
             slide_change_distance=_positive_float("SLIDE_CHANGE_DISTANCE", 0.020),
+            oci_inputs_r=_required("OCI_INPUTS_R"),
+            oci_inputs_rw=_required("OCI_INPUTS_RW"),
+            oci_outputs_r=_required("OCI_OUTPUTS_R"),
+            oci_outputs_rw=_required("OCI_OUTPUTS_RW"),
         )
 

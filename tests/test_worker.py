@@ -7,6 +7,7 @@ from pathlib import Path
 
 from lecture_notes.web.settings import OrdsSettings, WorkerSettings
 from lecture_notes.web.worker import Worker
+from storage_test_utils import FileStorage
 
 
 class FakeRepository:
@@ -86,12 +87,21 @@ class WorkerTests(unittest.TestCase):
             created = []
 
             def factory(command, stdout, stderr):
+                output_dir = Path(command[command.index("--output-dir") + 1])
+                output_dir.mkdir(parents=True, exist_ok=True)
+                (output_dir / "transcript_with_slides.md").write_text("combined", encoding="utf-8")
                 process = FakeProcess(command, stdout, stderr)
                 created.append(process)
                 return process
 
-            worker = Worker(repository, ords, settings, process_factory=factory)
-            reference = Path(directory) / "outputs/jobs/12/slides/55/reference"
+            worker = Worker(repository, ords, settings, process_factory=factory, storage=FileStorage(Path(directory)))
+            raw = Path(directory) / "outputs/jobs/12/transcript/config/transcript.json"
+            raw.parent.mkdir(parents=True)
+            raw.write_text("{}", encoding="utf-8")
+            upload = Path(directory) / "inputs/12/slides.pdf"
+            upload.parent.mkdir(parents=True)
+            upload.write_bytes(b"slides")
+            reference = Path(directory) / "work/jobs/12/slides/55/reference"
             reference.mkdir(parents=True)
             (reference / "slide_001.png").write_bytes(b"reference")
             worker.execute(
@@ -112,7 +122,7 @@ class WorkerTests(unittest.TestCase):
             self.assertIn("--slides-input", created[0].command)
             self.assertIn("--change-distance", created[0].command)
             self.assertIn("0.014000", created[0].command)
-            self.assertIn(str(Path(directory) / "outputs/jobs/12/slides/55"), created[0].command)
+            self.assertIn(str(Path(directory) / "work/jobs/12/slides/55"), created[0].command)
             self.assertFalse(reference.exists())
 
     def test_recovered_completed_operation_is_not_run_again(self):
@@ -136,7 +146,7 @@ class WorkerTests(unittest.TestCase):
                 repository,
                 ords,
                 settings,
-                process_factory=lambda *args, **kwargs: self.fail("process must not be started"),
+                process_factory=lambda *args, **kwargs: self.fail("process must not be started"), storage=FileStorage(Path(directory)),
             )
             worker.execute(
                 {
@@ -172,7 +182,7 @@ class WorkerTests(unittest.TestCase):
                 repository,
                 ords,
                 settings,
-                process_factory=lambda *args, **kwargs: self.fail("process must not be started"),
+                process_factory=lambda *args, **kwargs: self.fail("process must not be started"), storage=FileStorage(Path(directory)),
             )
 
             worker.execute(

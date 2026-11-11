@@ -5,7 +5,7 @@
   <a class="button-link secondary-button compact-view header-button" href="/courses/{{ lecture.echo_canonical_section_id }}">← {{ t("back") }}</a>
 {% endblock %}
 {% block content %}
-<div class="lecture-detail" data-auto-refresh="true">
+<div class="lecture-detail">
   <section class="card detail-card">
     <div class="detail-heading">
       <div class="detail-title">
@@ -133,7 +133,7 @@
 </dialog>
 
 {% if result_html %}
-<dialog id="transcriptViewer" class="transcript-dialog" aria-labelledby="transcriptViewerTitle" data-video-url="/lectures/{{ lecture.lecture_processing_id }}/video">
+<dialog id="transcriptViewer" class="transcript-dialog" aria-labelledby="transcriptViewerTitle" data-primary-video-url="/lectures/{{ lecture.lecture_processing_id }}/video?track=primary" data-secondary-video-url="/lectures/{{ lecture.lecture_processing_id }}/video?track=secondary">
   <div class="transcript-dialog-head">
     <h2 id="transcriptViewerTitle">{{ lecture.lecture_title or t("lecture") }}</h2>
     <div class="transcript-dialog-controls">
@@ -152,7 +152,13 @@
     </div>
   </div>
   <div id="transcriptVideoContainer" class="transcript-video" hidden>
-    <video id="transcriptVideo" controls playsinline preload="metadata"></video>
+    <div class="transcript-video-toolbar">
+      <button id="followTranscript" class="secondary-button compact-view" type="button" disabled>{{ t("follow_transcript") }}</button>
+    </div>
+    <div class="transcript-video-grid">
+      <video id="transcriptVideo" controls controlslist="nofullscreen noremoteplayback nodownload" disablepictureinpicture playsinline preload="metadata"></video>
+      <video id="transcriptSecondaryVideo" muted playsinline preload="metadata" aria-hidden="true"></video>
+    </div>
   </div>
   <div id="transcriptContent" class="markdown-viewer">{{ result_html|safe }}</div>
 </dialog>

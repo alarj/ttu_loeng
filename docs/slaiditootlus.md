@@ -147,9 +147,9 @@ Kasutajale pakutakse seitset suhtelist tundlikkusastet: `−3`, `−2`, `−1`, 
 
 Vaikimisi lävend peab tulema `.env`-i võtmega `SLIDE_CHANGE_DISTANCE`; kinnitatud väärtus on `0.020`. Tehniline tuletus on: `tegelik lävend = SLIDE_CHANGE_DISTANCE − (tundlikkusaste × 0.003)`. See annab praeguse vaikeväärtuse korral astmetele `−3…+3` väärtused `0.029`, `0.026`, `0.023`, `0.020`, `0.017`, `0.014` ja `0.011`.
 
-Worker loeb vaikimisi lävendi `.env`-i võtmega `SLIDE_CHANGE_DISTANCE`, arvutab enne töötlemist tegeliku lävendi ning edastab nii selle kui tundlikkusastme slaiditöötlusele. Mõlemad väärtused salvestatakse `slides.json` ja ühendatud Markdowni tehniliste andmete ossa. Slaiditöö väljund on versioonitud kataloogis `outputs/jobs/<lecture_processing_id>/slides/<operation_id>/`, mistõttu uus sidumine ei kirjuta varasemat tulemust üle.
+Worker loeb vaikimisi lävendi `.env`-i võtmega `SLIDE_CHANGE_DISTANCE`, arvutab enne töötlemist tegeliku lävendi ning edastab nii selle kui tundlikkusastme slaiditöötlusele. Mõlemad väärtused salvestatakse `slides.json` ja ühendatud Markdowni tehniliste andmete ossa. Slaiditöö väljund on OCI Object Storage'i versioonitud prefiksis `outputs/jobs/<lecture_processing_id>/slides/<operation_id>/`, mistõttu uus sidumine ei kirjuta varasemat tulemust üle.
 
-Kui kasutaja on lisanud PDF-, PPT- või PPTX-slaidifaili, renderdatakse sellest sidumise ajaks `reference/` võrdluspildid. Edukalt lõppenud slaiditöö järel eemaldab worker selle kausta, sest kasutajale vajalikud lõplikud pildid on juba samas versioonikataloogis `images/`. Algne üles laaditud slaidifail säilib `inputs/<lecture_processing_id>/` all; seega rendertakse `reference/` järgmise sidumistöö alguses uuesti. Ebaõnnestunud töö `reference/` kausta ei eemalda, et veaotsinguks vajalikud vaheartefaktid säiliksid.
+Kui kasutaja on lisanud PDF-, PPT- või PPTX-slaidifaili, säilib see OCI `inputs/<lecture_processing_id>/` all ning worker laeb selle sidumise ajaks lokaalsesse tööruumi. Seal renderdatakse `reference/` võrdluspildid. Edukalt lõppenud slaiditöö järel eemaldab worker selle lokaalse kausta, sest kasutajale vajalikud lõplikud pildid on juba OCI versioonikataloogis `images/`. Järgmine sidumine rendertab `reference/` uuesti OCI-st loetud algfailist. Ebaõnnestunud töö `reference/` kausta ei eemalda, et veaotsinguks vajalikud vaheartefaktid säiliksid.
 
 ## 10. Slaidi pealkiri ja tekstituvastus
 
@@ -226,6 +226,8 @@ Automaatse vastavuse piirid määratakse kontrollmaterjali põhjal. Ebaselget va
 ## 14. Transkriptiga sidumine
 
 Slaidivahetuse tõttu ei lõhuta ega kirjutata ümber olemasolevat TalTechNLP transkriptsioonisegmenti.
+
+Uue slaididega ühendatud Markdowni loengu metaandmed säilitavad ASR-i JSON-ist kasutatud kõnetuvastusmudeli nime, heli kestuse ja transkriptsioonisegmentide arvu. Muudatus rakendub uutele slaiditöötluse väljunditele; varem loodud Markdown-faile tagantjärele ei muudeta.
 
 Iga slaidi ilmumisaeg paigutatakse ajaliselt lähima segmendipiiri juurde. Slaidiviide sisaldab:
 
