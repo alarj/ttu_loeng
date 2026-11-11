@@ -157,17 +157,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const transcriptSecondaryVideo = document.getElementById("transcriptSecondaryVideo");
     const transcriptContent = document.getElementById("transcriptContent");
     const followTranscript = document.getElementById("followTranscript");
+    const closeTranscriptVideo = document.getElementById("closeTranscriptVideo");
     const slideVersionSelect = document.getElementById("slideVersionSelect");
     const downloadSelectedVersion = document.getElementById("downloadSelectedVersion");
     const defaultSlideVersionOperationId = document.getElementById("defaultSlideVersionOperationId");
     const openDefaultSlideVersionDialog = document.getElementById("openDefaultSlideVersionDialog");
     const primaryVideoUrl = transcriptViewer.dataset.primaryVideoUrl;
     const secondaryVideoUrl = transcriptViewer.dataset.secondaryVideoUrl;
+    const videoProgressStorageKey = `ttu-loeng:video-progress:${transcriptViewer.dataset.lectureId}`;
     let pendingVideoStart = null;
     let transcriptSegments = [];
     let activeSegment = null;
     let followingTranscript = true;
     let automaticScrollTimer = null;
+    let lastProgressSavedAt = 0;
     const timestampSeconds = (value) => {
       const parts = value.split(":").map((part) => Number.parseInt(part, 10));
       if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) return null;
@@ -176,6 +179,44 @@ document.addEventListener("DOMContentLoaded", () => {
     const setFollowingTranscript = (enabled) => {
       followingTranscript = enabled;
       if (followTranscript) followTranscript.disabled = enabled;
+    };
+    const lastTranscriptTimestamp = () => transcriptSegments.at(-1)?.start ?? null;
+    const clearVideoProgress = () => {
+      try {
+        window.localStorage.removeItem(videoProgressStorageKey);
+      } catch (_error) {
+        // Progress restoration is optional when browser storage is unavailable.
+      }
+    };
+    const saveVideoProgress = (force = false) => {
+      const seconds = transcriptVideo?.currentTime;
+      if (!transcriptVideo?.getAttribute("src") || transcriptVideo.readyState < 1 || !Number.isFinite(seconds) || seconds < 0) return;
+      const lastTimestamp = lastTranscriptTimestamp();
+      if (lastTimestamp !== null && seconds >= lastTimestamp) {
+        clearVideoProgress();
+        return;
+      }
+      const now = Date.now();
+      if (!force && now - lastProgressSavedAt < 5000) return;
+      try {
+        window.localStorage.setItem(videoProgressStorageKey, String(seconds));
+        lastProgressSavedAt = now;
+      } catch (_error) {
+        // Progress restoration is optional when browser storage is unavailable.
+      }
+    };
+    const savedVideoProgress = () => {
+      try {
+        const seconds = Number.parseFloat(window.localStorage.getItem(videoProgressStorageKey) || "");
+        const lastTimestamp = lastTranscriptTimestamp();
+        if (!Number.isFinite(seconds) || seconds < 0 || (lastTimestamp !== null && seconds >= lastTimestamp)) {
+          clearVideoProgress();
+          return null;
+        }
+        return seconds;
+      } catch (_error) {
+        return null;
+      }
     };
     const refreshTranscriptSegments = () => {
       activeSegment = null;
@@ -239,6 +280,10 @@ document.addEventListener("DOMContentLoaded", () => {
       setFollowingTranscript(true);
       hideVideo();
     };
+    const closeVideo = () => {
+      saveVideoProgress(true);
+      releaseVideo();
+    };
     const syncSecondaryVideo = () => {
       if (!transcriptSecondaryVideo || transcriptSecondaryVideo.hidden || transcriptSecondaryVideo.readyState < 1) return;
       if (Math.abs(transcriptSecondaryVideo.currentTime - transcriptVideo.currentTime) > 0.25) {
@@ -286,9 +331,14 @@ document.addEventListener("DOMContentLoaded", () => {
       transcriptVideo.addEventListener("ratechange", syncSecondaryVideo);
       transcriptVideo.addEventListener("timeupdate", () => {
         updateActiveSegment(transcriptVideo.currentTime);
+        saveVideoProgress();
         syncSecondaryVideo();
       });
-      transcriptVideo.addEventListener("ended", () => transcriptSecondaryVideo?.pause());
+      transcriptVideo.addEventListener("pause", () => saveVideoProgress(true));
+      transcriptVideo.addEventListener("ended", () => {
+        transcriptSecondaryVideo?.pause();
+        clearVideoProgress();
+      });
     }
     if (transcriptContent) {
       refreshTranscriptSegments();
@@ -328,6 +378,7 @@ document.addEventListener("DOMContentLoaded", () => {
       setFollowingTranscript(true);
       updateActiveSegment(transcriptVideo?.currentTime || 0, true);
     });
+    closeTranscriptVideo?.addEventListener("click", closeVideo);
     if (slideVersionSelect) {
       slideVersionSelect.addEventListener("change", async () => {
         const operationId = slideVersionSelect.value;
@@ -358,6 +409,13 @@ document.addEventListener("DOMContentLoaded", () => {
     openTranscriptViewer.addEventListener("click", () => {
       transcriptViewer.showModal();
       document.body.classList.add("modal-open");
+      const seconds = savedVideoProgress();
+      if (seconds !== null && videoContainer && transcriptVideo && primaryVideoUrl) {
+        videoContainer.hidden = false;
+        setFollowingTranscript(true);
+        loadVideos(seconds);
+        updateActiveSegment(seconds, true);
+      }
     });
     const closeViewer = () => transcriptViewer.close();
     closeTranscriptViewer.addEventListener("click", closeViewer);
@@ -365,10 +423,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (event.target === transcriptViewer) closeViewer();
     });
     transcriptViewer.addEventListener("close", () => {
-      releaseVideo();
+      closeVideo();
       document.body.classList.remove("modal-open");
       transcriptContent?.querySelectorAll("img.is-expanded").forEach((image) => image.classList.remove("is-expanded"));
     });
+    window.addEventListener("pagehide", () => saveVideoProgress(true));
   }
   const bindConfirmDialog = (dialogId, openId, cancelId) => {
     const dialog = document.getElementById(dialogId);

@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import time
 import uuid
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -223,10 +224,23 @@ class Worker:
             else Path("slides") / str(context["operation_id"])
         )
         source = work_root / relative
+        if context["operation_type"] == "slides":
+            self._create_images_archive(source)
         for path in source.rglob("*"):
-            if path.is_file() and "reference" not in path.parts:
+            if path.is_file() and "reference" not in path.parts and "images" not in path.parts:
                 relative = path.relative_to(work_root).as_posix()
                 self.storage.write_file(f"outputs/jobs/{lecture_id}/{relative}", path)
+
+    @staticmethod
+    def _create_images_archive(source: Path) -> None:
+        images = source / "images"
+        if not images.is_dir():
+            raise FileNotFoundError("Slide processing output has no images directory")
+        archive_path = source / "images.zip"
+        with zipfile.ZipFile(archive_path, mode="w", compression=zipfile.ZIP_STORED) as archive:
+            for image in sorted(images.rglob("*")):
+                if image.is_file():
+                    archive.write(image, image.relative_to(source).as_posix())
 
     def _command(self, context: dict[str, Any], output_root: Path) -> list[str]:
         lecture_id = str(context["lecture_processing_id"])

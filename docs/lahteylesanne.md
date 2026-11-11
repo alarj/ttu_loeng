@@ -285,7 +285,9 @@ MVP3 peab lisama olemasolevale töötlusmootorile:
 - sisselogimiseta slaididega ühendatud valmis Markdowni ja selle piltide ZIP-paketi allalaadimise ainult konkreetse loengu väärtustatud `public_id` otselingi kaudu; avalikku linki ei saa luua enne selle tulemuse valmimist ning tööde nimekiri ei ole anonüümselt nähtav;
 - ühise teenusekihi, mida kasutavad HTML-marsruudid ja mille peale lisatakse järgmises etapis JSON API.
 - loengu „Vaata” modalis Echo360 põhi- ja teisese videovoo võrdse suurusega sünkroonitud kuvamise ühe ühise juhtimisega; teisene video on vaigistatud ja eraldi mittejuhitav ning selle puudumisel kuvatakse põhivideo kahe video rea ühe veeru laiusega keskel;
-- video aja järgi aktiivse transkriptisegmendi nähtava helerohelise tausta ja rõhutatud ajamärgiga märkimise ning automaatse tekstijälgimise; käsitsi kerimine peatab automaatse kerimise, kuid mitte jooksva segmendi märkimist, ning „Jälgi teksti” taastab jooksva segmendi nähtavuse ja automaatse jälgimise;
+- video aja järgi aktiivse transkriptisegmendi nähtava helerohelise tausta ja rõhutatud ajamärgiga märkimise ning automaatse tekstijälgimise; käsitsi kerimine peatab automaatse kerimise, kuid mitte jooksva segmendi märkimist, ning „Jälgi teksti” taastab jooksva segmendi nähtavuse ja automaatse jälgimise; „Sulge video” peatab ja peidab mõlemad videod ning lõpetab jälgimise;
+- loengupõhise vaatamise järje säilitamise brauseri `localStorage`-is: „Vaata” modal taastab selle videod pausituna ja leiab vastava segmendi, kuid viimase transkriptsiooni ajamärgini jõudnud vaatamise järge ei säilitata;
+- valitud transkriptsiooniversiooni ZIP-allalaadimisnupu kuvamise „Vaata” modali versioonivaliku juures.
 
 ORDS on ainus tööjärjekorra, järjestuse ja käivitamisloa autoriteet. Rakendus ei pea kohalikku järjekorda, ei vali ise järgmist tööd ega käivita ressursimahukat tööd ilma ORDS-i claim'ita. ORDS ei täida töö sisu: ASR-i ja slaiditöötluse protsessi, failid, logid ja artefaktid haldab `ttu_loeng` rakendus.
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 from lecture_notes.web.settings import OrdsSettings, WorkerSettings
@@ -89,7 +90,12 @@ class WorkerTests(unittest.TestCase):
             def factory(command, stdout, stderr):
                 output_dir = Path(command[command.index("--output-dir") + 1])
                 output_dir.mkdir(parents=True, exist_ok=True)
-                (output_dir / "transcript_with_slides.md").write_text("combined", encoding="utf-8")
+                (output_dir / "transcript_with_slides.md").write_text(
+                    "![Slaid](images/slide_001.png)", encoding="utf-8"
+                )
+                (output_dir / "slides.json").write_text("{}", encoding="utf-8")
+                (output_dir / "images").mkdir()
+                (output_dir / "images/slide_001.png").write_bytes(b"slide")
                 process = FakeProcess(command, stdout, stderr)
                 created.append(process)
                 return process
@@ -124,6 +130,11 @@ class WorkerTests(unittest.TestCase):
             self.assertIn("0.014000", created[0].command)
             self.assertIn(str(Path(directory) / "work/jobs/12/slides/55"), created[0].command)
             self.assertFalse(reference.exists())
+            archive = Path(directory) / "outputs/jobs/12/slides/55/images.zip"
+            self.assertTrue(archive.is_file())
+            with zipfile.ZipFile(archive) as contents:
+                self.assertEqual(contents.namelist(), ["images/slide_001.png"])
+            self.assertFalse((Path(directory) / "outputs/jobs/12/slides/55/images/slide_001.png").exists())
 
     def test_recovered_completed_operation_is_not_run_again(self):
         with tempfile.TemporaryDirectory() as directory:

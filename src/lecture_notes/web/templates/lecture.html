@@ -17,11 +17,6 @@
         {% if user.is_admin %}<button id="openDeleteLectureDialog" class="secondary-button compact-view" type="button">{{ t("delete") }}</button>{% endif %}
         {% if user.is_admin and lecture.asr_succeeded %}<button id="openReprocessSlidesDialog" class="secondary-button compact-view" type="button">{{ t("reprocess_slides") }}</button>{% endif %}
         {% if result_ready %}<button id="openTranscriptViewer" class="compact-view" type="button">{{ t("view") }}</button>{% endif %}
-        {% if download_ready %}
-        <a id="downloadSelectedVersion" class="button-link secondary-button compact-view icon-button" href="/lectures/{{ lecture.lecture_processing_id }}/download{% if selected_original %}?version=0{% elif selected_version %}?version={{ selected_version.operation_id }}{% endif %}" title="{{ t('download') }}" aria-label="{{ t('download') }}">
-          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg>
-        </a>
-        {% endif %}
         <button id="openOriginalVideoDialog" class="secondary-button compact-view icon-button" type="button" title="{{ t('open_original_video') }}" aria-label="{{ t('open_original_video') }}">
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 7 8 5-8 5Z"/></svg>
         </button>
@@ -133,7 +128,7 @@
 </dialog>
 
 {% if result_html %}
-<dialog id="transcriptViewer" class="transcript-dialog" aria-labelledby="transcriptViewerTitle" data-primary-video-url="/lectures/{{ lecture.lecture_processing_id }}/video?track=primary" data-secondary-video-url="/lectures/{{ lecture.lecture_processing_id }}/video?track=secondary">
+<dialog id="transcriptViewer" class="transcript-dialog" aria-labelledby="transcriptViewerTitle" data-lecture-id="{{ lecture.lecture_processing_id }}" data-primary-video-url="/lectures/{{ lecture.lecture_processing_id }}/video?track=primary" data-secondary-video-url="/lectures/{{ lecture.lecture_processing_id }}/video?track=secondary">
   <div class="transcript-dialog-head">
     <h2 id="transcriptViewerTitle">{{ lecture.lecture_title or t("lecture") }}</h2>
     <div class="transcript-dialog-controls">
@@ -148,11 +143,17 @@
       </label>
       {% if user.is_admin and slide_versions %}<button id="openDefaultSlideVersionDialog" class="secondary-button compact-view" type="button"{% if selected_original %} disabled{% endif %}>{{ t("set_default_version") }}</button>{% endif %}
       {% endif %}
+      {% if download_ready %}
+      <a id="downloadSelectedVersion" class="button-link secondary-button compact-view icon-button" href="/lectures/{{ lecture.lecture_processing_id }}/download{% if selected_original %}?version=0{% elif selected_version %}?version={{ selected_version.operation_id }}{% endif %}" title="{{ t('download') }}" aria-label="{{ t('download') }}">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg>
+      </a>
+      {% endif %}
       <button id="closeTranscriptViewer" class="secondary-button compact-view" type="button">{{ t("close") }}</button>
     </div>
   </div>
   <div id="transcriptVideoContainer" class="transcript-video" hidden>
     <div class="transcript-video-toolbar">
+      <button id="closeTranscriptVideo" class="secondary-button compact-view" type="button">{{ t("close_video") }}</button>
       <button id="followTranscript" class="secondary-button compact-view" type="button" disabled>{{ t("follow_transcript") }}</button>
     </div>
     <div class="transcript-video-grid">

@@ -45,19 +45,26 @@ class WebSettings:
     oci_inputs_rw: str = ""
     oci_outputs_r: str = ""
     oci_outputs_rw: str = ""
+    slide_cache_root: Path | None = None
+    slide_cache_max_bytes: int = 5 * 1024 * 1024 * 1024
+    slide_cache_max_age_seconds: int = 7 * 24 * 60 * 60
 
     @classmethod
     def from_env(cls) -> "WebSettings":
+        runtime_root = Path(os.getenv("TTU_LOENG_RUNTIME_ROOT", "/srv/ttu-loeng")).resolve()
         return cls(
             base_url=os.getenv("APP_BASE_URL", "https://ttu-loeng.fun-o.eu").strip().rstrip("/"),
             google_client_id=_required("GOOGLE_CLIENT_ID"),
             session_secret=_required("SESSION_SECRET"),
-            runtime_root=Path(os.getenv("TTU_LOENG_RUNTIME_ROOT", "/srv/ttu-loeng")).resolve(),
+            runtime_root=runtime_root,
             ui_status_poll_interval_seconds=_positive_int("UI_STATUS_POLL_INTERVAL_SECONDS", 30),
             oci_inputs_r=_required("OCI_INPUTS_R"),
             oci_inputs_rw=_required("OCI_INPUTS_RW"),
             oci_outputs_r=_required("OCI_OUTPUTS_R"),
             oci_outputs_rw=_required("OCI_OUTPUTS_RW"),
+            slide_cache_root=Path(os.getenv("SLIDE_CACHE_ROOT", "/cache/slides")).resolve(),
+            slide_cache_max_bytes=_positive_int("SLIDE_CACHE_MAX_BYTES", 5 * 1024 * 1024 * 1024),
+            slide_cache_max_age_seconds=_positive_int("SLIDE_CACHE_MAX_AGE_SECONDS", 7 * 24 * 60 * 60),
         )
 
 

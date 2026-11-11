@@ -254,6 +254,9 @@ Git-repositoorium sisaldab koodi, konfiguratsiooni, võrguvabu teste ja dokument
 ├── work/jobs/<lecture_processing_id>/
 │   ├── transcript/                # OCI-st toodud või ajutine ASR-väljund
 │   ├── slides/<operation_id>/
+│   │   ├── transcript_with_slides.md
+│   │   ├── slides.json
+│   │   └── images.zip
 │   │   └── reference/             # ajutised võrdluspildid, mitte OCI artefakt
 │   └── logs/
 ├── models/huggingface/
@@ -263,9 +266,19 @@ Git-repositoorium sisaldab koodi, konfiguratsiooni, võrguvabu teste ja dokument
 OCI objektivõtmed kasutavad sama loogilist kuju: `inputs/<lecture_processing_id>/...`,
 `outputs/submissions/<submission_public_id>/resolver.json` ja
 `outputs/jobs/<lecture_processing_id>/...`. Worker kirjutab lõpliku ASR-i ning
-slaidiversiooni OCI-sse alles eduka protsessi järel; `reference/`, audio ja video
-jäävad lokaalseks ajutiseks tööaineks. Konteinerid kirjutavad hosti mitte-root
-kasutaja UID/GID-ga.
+slaidiversiooni OCI-sse alles eduka protsessi järel. Slaidiversiooni pildid
+pakitakse `images.zip`-iks; OCI-s ei hoita eraldi lõplikke pildiobjekte.
+`reference/`, audio ja video jäävad lokaalseks ajutiseks tööaineks. Konteinerid
+kirjutavad hosti mitte-root kasutaja UID/GID-ga.
+
+Veebikonteiner kasutab `/cache` `tmpfs`-i, mille suuruspiir on 5 GiB. Esimene
+valitud slaidiversiooni avamine toob OCI-st ühendatud Markdowni, manifesti ja
+`images.zip`-i, pakib pildid versioonikataloogi ning teeb selle nähtavaks alles
+pärast täielikku õnnestumist. Cache'i kirje võti on loeng ja slaiditoimingu ID;
+kirje eemaldatakse tervikuna seitse päeva pärast viimast kasutamist või enne
+uue tervikpaketi lisamist kõige kauem kasutatud kirjete seast. Containeri restart
+tühjendab cache'i. Käsitsi määratud vaikeversiooni või viimase eduka versiooni
+valimise reegel ei sõltu cache'ist.
 
 ## 12. Töö olek ja korduvkasutus
 
@@ -444,11 +457,11 @@ ORDS-i järjekorra API autentimine kasutab OAuth `client_credentials` voogu. `tt
 
 Kasutaja saab korraga valida mitu loengut ja siduda iga loenguga oma valikulise slaidifaili. Veebiliides kuvab iga loengu ASR-i, sõltuva slaiditöö ja valmis tulemuse. Iga taustatöö olekut näidatakse ühe ORDS-i olekumärgisega; dubleeriva kohaliku tulemuse teksti asemel kuvatakse `BACKGROUND_OPERATIONS.LOCAL_STARTED_AT` ja `LOCAL_COMPLETED_AT`. UTC-ajad edastatakse ISO 8601 kujul brauserile, mis teisendab need oma ajavööndisse ja kuvab 24-tunnisel kujul `dd.mm.yyyy hh:mm:ss`. ORDS-i olek on järjekorra ja täitmise tõeallikas; rakenduse artefaktide olemasolu ja sisemised vead on rakenduse tõeallikas.
 
-Brauserikasutaja autentimine toimub Google Identity Services ID-tokeniga samal põhimõttel nagu serveri `fun-o.eu` ja `haldus` rakendustes. Backend kontrollib tokenit Google'i `tokeninfo` teenuse kaudu, võrdleb `aud` väärtust `GOOGLE_CLIENT_ID` seadistusega ning nõuab kinnitatud e-posti aadressi. Esmakordsel edukal sisselogimisel luuakse `USER` rolliga `APP_USERS` kirje; rakendus ei halda kohalikke paroole. Aegunud või puuduva sessiooniga kaitstud HTML-päring suunatakse avalehe puhtale Google'i sisselogimisvaatele. `USER` näeb ja laadib alla kõigi aktiivsete tööde tulemusi, kuid uusi töid ja avalikke jagamislinke haldab ainult `ADMIN`. Rolli `ADMIN` määramine toimub otse andmebaasis. Avalikku jagamist pakutakse ja `LECTURE_PROCESSINGS.public_id` saab väärtustada alles pärast slaididega ühendatud `slides/transcript_with_slides.md` valmimist. Sisselogitud kasutaja saab detailmodalis valida slaididega versiooni või algse ASR-transkripti ning ZIP järgib seda valikut. Avalik allalaadimine ei paku toortranskripti ning kasutab alati vaike-slaidiversiooni. ZIP luuakse päringu ajal, selle juurkataloogi ja Markdown-faili nimi tuletatakse failisüsteemi jaoks turvaliseks tehtud loengu nimest; `images/` lisatakse ainult siis, kui valitud Markdown neile viitab. Paketti ei säilitata püsiva artefaktina.
+Brauserikasutaja autentimine toimub Google Identity Services ID-tokeniga samal põhimõttel nagu serveri `fun-o.eu` ja `haldus` rakendustes. Backend kontrollib tokenit Google'i `tokeninfo` teenuse kaudu, võrdleb `aud` väärtust `GOOGLE_CLIENT_ID` seadistusega ning nõuab kinnitatud e-posti aadressi. Esmakordsel edukal sisselogimisel luuakse `USER` rolliga `APP_USERS` kirje; rakendus ei halda kohalikke paroole. Aegunud või puuduva sessiooniga kaitstud HTML-päring suunatakse avalehe puhtale Google'i sisselogimisvaatele. `USER` näeb ja laadib alla kõigi aktiivsete tööde tulemusi, kuid uusi töid ja avalikke jagamislinke haldab ainult `ADMIN`. Rolli `ADMIN` määramine toimub otse andmebaasis. Avalikku jagamist pakutakse ja `LECTURE_PROCESSINGS.public_id` saab väärtustada alles pärast valitud slaidiversiooni `slides/<operation_id>/transcript_with_slides.md` valmimist. Sisselogitud kasutaja saab detailmodalis valida slaididega versiooni või algse ASR-transkripti ning ZIP järgib seda valikut. Avalik allalaadimine ei paku toortranskripti ning kasutab alati vaike-slaidiversiooni. ZIP luuakse päringu ajal, selle juurkataloogi ja Markdown-faili nimi tuletatakse failisüsteemi jaoks turvaliseks tehtud loengu nimest; `images/` lisatakse ainult siis, kui valitud Markdown neile viitab. Paketti ei säilitata püsiva artefaktina.
 
 Markdown-vaates teisendatakse transkriptsioonisegmentide ajavahemikud videolinkideks. Link juhib modali ülaosas paiknevad kaks HTML5-videopleierit vastava segmendi algusajale; segmendi lõppaeg ei peata videot. Pleierid kasutavad Echo360 `primaryFiles` ja `secondaryFiles` voogude väikseimaid esitusvariante ning kuvatakse võrdse suurusega. Põhivideo ainus nähtav juhtpaneel juhib mõlema voo mängimist, pausi, ajas liikumist ja esituskiirust. Teisene video on vaigistatud ja eraldi mittejuhitav; kui loengul teisest voogu ei ole, peidetakse see ning põhivideo säilitab kahe video rea ühe veeru laiuse ja joondatakse keskele. Kuna Echo meediaallikas nõuab avaliku kursusesessiooni küpsist, ei anta meedia URL-e brauserile otse. Autenditud videoendpoint võtab vastu lubatud vootunnuse `primary` või `secondary`, vahendab brauseri ühte baitvahemikku kirjeldava `Range`-päise vastavale Echo360 allikale ja tagastab `206 Partial Content` vastuse voona. Videoid ei kirjutata runtime-kataloogi ega puhverdata rakenduses tervikuna.
 
-Brauser seob iga renderdatud transkriptisegmendi selle ajavahemikuga. Põhivideo aja muutudes saab viimane alanud segment CSS-klassi, mis kuvab kogu tekstilõigu olemasoleva paletiga sobiva nähtava helerohelise taustaga ja selle ajamärgi rasvases kirjas. Automaatse jälgimise ajal keritakse aktiivne segment transkriptiala keskele, kui see väljub mugavalt nähtavast alast. Hiire, puute, klaviatuuri või kerimisriba abil käsitsi kerimine peatab ainult automaatse kerimise; aktiivse segmendi arvutamine ja märkimine jätkub. Nupp „Jälgi teksti” kerib aktiivse segmendi uuesti nähtavale ja taastab automaatse jälgimise.
+Brauser seob iga renderdatud transkriptisegmendi selle ajavahemikuga. Põhivideo aja muutudes saab viimane alanud segment CSS-klassi, mis kuvab kogu tekstilõigu olemasoleva paletiga sobiva nähtava helerohelise taustaga ja selle ajamärgi rasvases kirjas. Automaatse jälgimise ajal keritakse aktiivne segment transkriptiala keskele, kui see väljub mugavalt nähtavast alast. Hiire, puute, klaviatuuri või kerimisriba abil käsitsi kerimine peatab ainult automaatse kerimise; aktiivse segmendi arvutamine ja märkimine jätkub. Nupp „Jälgi teksti” kerib aktiivse segmendi uuesti nähtavale ja taastab automaatse jälgimise. „Sulge video” peatab mõlemad vood, eemaldab nende allikad, peidab videorea ja lõpetab jälgimise. Põhivideo vaatamisaeg salvestatakse loengupõhise `localStorage` võtmena kõige rohkem iga viie sekundi järel ning videopausi, video/modali sulgemise ja `pagehide` sündmuse ajal. Modali avamisel taastatakse kehtiv aeg pausitud videona ja aktiivne segment tuuakse nähtavale. Kui aeg jõuab viimase transkriptsioonisegmendi alguseni või video lõpeb, kustutatakse võti, nii et järgmine avamine algab algusest. Versiooni ZIP-allalaadimislink asub modali päises ning selle URL uuendatakse versioonivaliku muutumisel.
 
 Loengu detailvaate eraldi videonupp kasutab sama autenditud videoendpoint'i ja avab video oma modalis; sellega ei avata Echo360 kasutajaliidest ega nõuta brauserilt Echo küpsist. Modalis kuvatakse lisaks algne `https://echo360.org.uk/lesson/<lesson-id>/classroom` URL koos selgitusega, et Echo classroom-vaate avamiseks peab brauseris juba olema kehtiv Echo360 sessioon. Videomodali sulgemisel peatatakse esitus ja eemaldatakse pleieri allikas.
 
