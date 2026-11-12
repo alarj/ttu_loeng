@@ -16,6 +16,7 @@ import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
+from zoneinfo import ZoneInfo
 
 from lecture_notes.config import ensure_runtime_output, settings
 from lecture_notes.echo360 import EchoClient, EchoError, build_resolver_manifest
@@ -44,6 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
     process.add_argument("--lesson-id", required=True)
     process.add_argument("--transcript", type=Path, required=True)
     process.add_argument("--output-dir", type=Path, required=True)
+    process.add_argument("--lecture-start-at")
     process.add_argument("--slides-input", type=Path)
     process.add_argument("--coarse-seconds", type=float, default=20.0)
     process.add_argument("--refine-seconds", type=float, default=2.0)
@@ -102,6 +104,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 public_url=args.public_url,
                 lesson_id=args.lesson_id,
                 transcript_path=transcript_path,
+                lecture_start_at=args.lecture_start_at,
                 slides_input=slides_input,
                 output_dir=output_dir,
                 work_root=config.work_root,
@@ -319,6 +322,7 @@ def process_slides(
     public_url: str,
     lesson_id: str,
     transcript_path: Path,
+    lecture_start_at: str | None,
     slides_input: Path | None,
     output_dir: Path,
     work_root: Path,
@@ -418,6 +422,7 @@ def process_slides(
             appearances,
             change_distance=change_distance,
             sensitivity_level=sensitivity_level,
+            lecture_start_at=lecture_start_at,
         )
         (output_dir / "transcript_with_slides.md").write_text(merged, encoding="utf-8")
         result = {
@@ -1121,6 +1126,7 @@ def _render_transcript_with_slides(
     *,
     change_distance: float = CHANGE_DISTANCE,
     sensitivity_level: int = 0,
+    lecture_start_at: str | None = None,
 ) -> str:
     segments = transcript.get("segments")
     if not isinstance(segments, list) or not segments:
@@ -1146,8 +1152,16 @@ def _render_transcript_with_slides(
         "## Loeng",
         "",
         f"- Pealkiri: {lesson.get('title', '')}",
-        f"- Echo lesson ID: `{lesson.get('lesson_id', '')}`",
     ]
+    if lecture_start_at:
+        try:
+            start_at = datetime.fromisoformat(lecture_start_at.replace("Z", "+00:00"))
+            if start_at.tzinfo is None:
+                start_at = start_at.replace(tzinfo=timezone.utc)
+            lines.append(f"- Loengu toimumise kuupäev: {start_at.astimezone(ZoneInfo('Europe/Tallinn')).strftime('%d.%m.%Y')}")
+        except ValueError:
+            pass
+    lines.append(f"- Echo lesson ID: `{lesson.get('lesson_id', '')}`")
     if isinstance(configuration, dict) and configuration.get("model_id"):
         lines.append(f"- Mudel: `{configuration['model_id']}`")
     if isinstance(audio, dict) and isinstance(audio.get("duration_seconds"), (int, float)):

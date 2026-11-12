@@ -70,6 +70,7 @@ class FakeRepository:
         self.sharing_calls = []
         self.delete_calls = []
         self.reprocess_calls = []
+        self.reprocess_previous_job_id = 100
         self.default_calls = []
         self.public_lecture = Lecture(
             lecture_processing_id=20,
@@ -132,7 +133,7 @@ class FakeRepository:
 
     def create_slide_reprocessing(self, lecture_id, sensitivity_level):
         self.reprocess_calls.append((lecture_id, sensitivity_level))
-        return 42, "key-slides-2", 100
+        return 42, "key-slides-2", self.reprocess_previous_job_id
 
     def set_default_slides_operation(self, lecture_id, operation_id):
         self.default_calls.append((lecture_id, operation_id))
@@ -158,6 +159,17 @@ class LectureServiceTests(unittest.TestCase):
         service.resolve = lambda url: RESOLVER
         return service, repository, ords
 
+    def test_successful_historical_operation_without_ords_job_is_manual_ok(self):
+        with tempfile.TemporaryDirectory() as directory:
+            service, repository, _ = self.service(Path(directory))
+            repository.public_lecture.operations = [
+                Operation(40, "asr", 1, None, local_outcome="SUCCEEDED"),
+            ]
+
+            lecture = service.get_lecture(20)
+
+            self.assertEqual(lecture.operations[0].status, "MANUAL_OK")
+
     def test_submission_stores_upload_and_registers_dependency(self):
         with tempfile.TemporaryDirectory() as directory:
             service, repository, ords = self.service(Path(directory))
@@ -180,6 +192,14 @@ class LectureServiceTests(unittest.TestCase):
             self.assertEqual(repository.tx.operations, [(20, "asr", None, None), (20, "slides", 40, 0)])
             self.assertEqual(repository.registered, [(40, 100), (41, 101)])
             self.assertEqual(ords.calls[1]["previous_job_id"], 100)
+            self.assertEqual(
+                ords.calls[0]["parameters"],
+                {
+                    "lecture_title": "Loeng 1",
+                    "lecture_start_at": "2026-11-01T10:00:00Z",
+                },
+            )
+            self.assertEqual(ords.calls[1]["parameters"], ords.calls[0]["parameters"])
             stored = repository.tx.uploads[0][1]
             self.assertEqual(stored.sha256, "61085577d24c91de3d8b696fefde88e25e80a548875027de4df4c7bff4f79926")
             self.assertEqual(service.storage.read_bytes(stored.relative_path), b"slide data")
@@ -197,6 +217,26 @@ class LectureServiceTests(unittest.TestCase):
             self.assertEqual(len(ords.calls), 1)
             self.assertEqual(repository.errors[0][:2], (40, "TEST"))
             self.assertEqual(repository.errors[1][:2], (41, "PREVIOUS_JOB_NOT_REGISTERED"))
+
+    def test_reprocess_registers_historical_asr_without_ords_dependency(self):
+        with tempfile.TemporaryDirectory() as directory:
+            service, repository, ords = self.service(Path(directory))
+            repository.reprocess_previous_job_id = None
+
+            service.reprocess_slides(20, 0)
+
+            self.assertEqual(repository.reprocess_calls, [(20, 0)])
+            self.assertEqual(ords.calls, [
+                {
+                    "operation_id": 42,
+                    "operation_type": "slides",
+                    "idempotency_key": "key-slides-2",
+                    "lecture_processing_id": 20,
+                    "previous_job_id": None,
+                    "parameters": {"lecture_title": "Loeng 1"},
+                },
+            ])
+            self.assertEqual(repository.registered, [(42, 101)])
 
     def test_unavailable_lecture_cannot_be_submitted(self):
         with tempfile.TemporaryDirectory() as directory:

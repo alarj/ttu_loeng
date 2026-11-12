@@ -116,7 +116,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .history-actions, .form-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .status-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .status-badge { display: inline-flex; align-items: center; min-height: 30px; padding: 5px 10px; border-radius: 999px; background: #e8f2f2; color: #27666c; font-size: 13px; font-weight: 800; white-space: nowrap; }
-.status-succeeded { background: var(--funo-ok); color: #23652a; }
+.status-succeeded, .status-manual_ok { background: var(--funo-ok); color: #23652a; }
 .status-queued, .status-held, .status-claimed, .status-not_registered { background: #fff3cd; color: #805d00; }
 .status-running { background: #dbeafe; color: #1d4ed8; }
 .status-failed, .status-interrupted, .status-registration_error, .status-unavailable { background: var(--funo-error); color: #8a2f2f; }

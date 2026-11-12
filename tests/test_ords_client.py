@@ -86,6 +86,38 @@ class OrdsClientTests(unittest.TestCase):
         self.assertEqual(request_body["parameters"], {"lecture_processing_id": 12})
         self.assertEqual(opener.requests[2].get_header("Authorization"), "Bearer token-1")
 
+    def test_registration_keeps_technical_id_when_display_metadata_is_added(self):
+        opener = FakeOpener()
+        client = OrdsClient(
+            OrdsSettings("https://ords.example/jobs", "client", "secret", 60, 300, 300),
+            opener=opener,
+            clock=lambda: 100.0,
+            sleeper=lambda value: None,
+        )
+
+        client.register_job(
+            operation_id=45,
+            operation_type="asr",
+            idempotency_key="key",
+            lecture_processing_id=12,
+            previous_job_id=None,
+            parameters={
+                "lecture_processing_id": 999,
+                "lecture_title": "Loeng 1",
+                "lecture_start_at": "2026-11-01T10:00:00Z",
+            },
+        )
+
+        request_body = json.loads(opener.requests[1].data.decode("utf-8"))
+        self.assertEqual(
+            request_body["parameters"],
+            {
+                "lecture_processing_id": 12,
+                "lecture_title": "Loeng 1",
+                "lecture_start_at": "2026-11-01T10:00:00Z",
+            },
+        )
+
     def test_logs_request_stage_status_and_duration_without_sensitive_values(self):
         opener = FakeOpener()
         client = OrdsClient(

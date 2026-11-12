@@ -93,6 +93,9 @@ ORDS-i järjekorra API kasutab OAuth `client_credentials` autentimist. `ttu_loen
 - `application_job_id`: `BACKGROUND_OPERATIONS.operation_id` tekstikujul; eraldi veergu selle jaoks ei looda;
 - `idempotency_key`: sama toimingu korduses muutumatu võti;
 - `parameters.lecture_processing_id`: rakenduse loengutöötluse numbriline primaarvõti.
+- `parameters.lecture_title` ja `parameters.lecture_start_at`: töö esitamise hetkel
+  kaasa pandud informatiivne loengunimi ja UTC aeg ORDS-i haldusvaate jaoks;
+  need ei ole workeri sisend ega asenda `lecture_processing_id` väärtust.
 
 Rakenduse loengutöötluse ID seob ühe kasutajale kuvatava loengu, selle slaidifaili, ASR-i toimingu ja slaiditöötluse toimingu. `application_job_id` ei ole kohaliku järjekorra tunnus.
 
@@ -106,7 +109,9 @@ Rakenduse loengutöötluse ID seob ühe kasutajale kuvatava loengu, selle slaidi
   "idempotency_key": "ttu_loeng:asr:456",
   "previous_job_id": null,
   "parameters": {
-    "lecture_processing_id": 123
+    "lecture_processing_id": 123,
+    "lecture_title": "Loengu pealkiri",
+    "lecture_start_at": "2026-11-01T10:00:00Z"
   }
 }
 ```
@@ -123,7 +128,9 @@ Worker leiab `lecture_processing_id` kaudu rakenduse püsivast olekust Echo360 a
   "idempotency_key": "ttu_loeng:slides:789",
   "previous_job_id": 123,
   "parameters": {
-    "lecture_processing_id": 123
+    "lecture_processing_id": 123,
+    "lecture_title": "Loengu pealkiri",
+    "lecture_start_at": "2026-11-01T10:00:00Z"
   }
 }
 ```
@@ -134,7 +141,7 @@ Worker kontrollib lisaks enne slaiditöötlust transkripti olemasolu ja sobivust
 
 ### 6.4. Slaidide uuesti sidumine ja tundlikkus
 
-Edukalt valminud ASR-i järel saab `ADMIN` luua samale loengule uue `slides`-toimingu. See ei esita uut ASR-i tööd ega muuda olemasolevat ASR-i tulemust. Uue toimingu `previous_job_id` on sama loengu eduka ASR-i ORDS-i `job_id` ning selle `attempt_number` on eelmisest sama loengu `slides`-toimingust ühe võrra suurem.
+Edukalt valminud ASR-i järel saab `ADMIN` luua samale loengule uue `slides`-toimingu. See ei esita uut ASR-i tööd ega muuda olemasolevat ASR-i tulemust. Tavapärase toimingu `previous_job_id` on sama loengu eduka ASR-i ORDS-i `job_id` ning selle `attempt_number` on eelmisest sama loengu `slides`-toimingust ühe võrra suurem. Käsitsi imporditud ajaloolise `MANUAL_OK` ASR-i korral puudub ORDS-i töö; siis registreeritakse uus slaiditöö ORDS-is `previous_job_id = null` väärtusega. ORDS hoiab endiselt selle uue slaiditöö järjekorra, claim'i ja täitmisoleku autoriteeti ning worker kontrollib enne töötlust imporditud transkripti olemasolu.
 
 Vorm pakub ainult tundlikkusastmeid `−3`, `−2`, `−1`, `0`, `+1`, `+2` ja `+3`. `0` on vaikimisi valik. Positiivne väärtus tähendab tundlikumat ja negatiivne väärtus vähem tundlikku slaidimuutuse tuvastamist; tehnilist lävendit kasutajale ei kuvata. Tegelik lävend tuletatakse `.env`-i `SLIDE_CHANGE_DISTANCE=0.020` väärtusest sammuga `0.003`, nagu on kirjeldatud failis [`tehniline_spek.md`](tehniline_spek.md).
 

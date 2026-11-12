@@ -52,7 +52,14 @@ class OrdsClient:
         idempotency_key: str,
         lecture_processing_id: int,
         previous_job_id: int | None,
+        parameters: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        job_parameters = {"lecture_processing_id": lecture_processing_id}
+        if parameters:
+            job_parameters.update(parameters)
+        # Display metadata is not authoritative and may not replace the ID used
+        # by the worker to obtain the actual processing context.
+        job_parameters["lecture_processing_id"] = lecture_processing_id
         return self._json_request(
             "POST",
             "application/jobs",
@@ -62,7 +69,7 @@ class OrdsClient:
                 "application_job_id": str(operation_id),
                 "idempotency_key": idempotency_key,
                 "previous_job_id": previous_job_id,
-                "parameters": {"lecture_processing_id": lecture_processing_id},
+                "parameters": job_parameters,
             },
         )
 

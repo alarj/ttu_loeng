@@ -515,7 +515,7 @@ class OracleRepository:
         )
         return public_id
 
-    def create_slide_reprocessing(self, lecture_processing_id: int, sensitivity_level: int) -> tuple[int, str, int]:
+    def create_slide_reprocessing(self, lecture_processing_id: int, sensitivity_level: int) -> tuple[int, str, int | None]:
         with self.transaction() as transaction:
             with transaction.connection.cursor() as cursor:
                 cursor.execute(
@@ -537,15 +537,18 @@ class OracleRepository:
                      WHERE lecture_processing_id = :lecture_id
                        AND operation_type = 'asr'
                        AND local_outcome = 'SUCCEEDED'
-                       AND ords_job_id IS NOT NULL
                        AND end_date IS NULL
+                     ORDER BY CASE WHEN ords_job_id IS NULL THEN 1 ELSE 0 END,
+                              operation_id DESC
+                     FETCH FIRST 1 ROW ONLY
                     """,
                     {"lecture_id": lecture_processing_id},
                 )
                 row = cursor.fetchone()
             if row is None:
                 raise KeyError(lecture_processing_id)
-            previous_operation_id, previous_job_id = (int(row[0]), int(row[1]))
+            previous_operation_id = int(row[0])
+            previous_job_id = int(row[1]) if row[1] is not None else None
             operation_id, idempotency_key = transaction.insert_operation(
                 lecture_processing_id,
                 "slides",
@@ -592,6 +595,7 @@ class OracleRepository:
                 SELECT bo.operation_id, bo.operation_type, bo.ords_job_id,
                        bo.local_outcome, bo.slide_sensitivity_level,
                        lp.lecture_processing_id, lp.echo_lesson_id,
+                       lp.lecture_start_at,
                        s.echo_public_url,
                        u.stored_relative_path AS slides_relative_path
                   FROM background_operations bo

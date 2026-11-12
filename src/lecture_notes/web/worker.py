@@ -7,6 +7,7 @@ import subprocess
 import time
 import uuid
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -291,6 +292,13 @@ class Worker:
                 "--sensitivity-level",
                 str(sensitivity_level),
             ]
+            lecture_start_at = context.get("lecture_start_at")
+            if lecture_start_at:
+                if isinstance(lecture_start_at, datetime):
+                    if lecture_start_at.tzinfo is None:
+                        lecture_start_at = lecture_start_at.replace(tzinfo=timezone.utc)
+                    lecture_start_at = lecture_start_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+                command.extend(["--lecture-start-at", str(lecture_start_at)])
             if context.get("slides_relative_path"):
                 command.extend(["--slides-input", str(output_root / context["slides_relative_path"])])
             return command

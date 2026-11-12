@@ -170,11 +170,14 @@ class SlideSourceTests(unittest.TestCase):
                 "/runtime/transcript.json",
                 "--output-dir",
                 "/runtime/slides",
+                "--lecture-start-at",
+                "2026-09-12T14:45:00Z",
             ]
         )
         self.assertEqual(args.command, "process")
         self.assertEqual(args.coarse_seconds, 20.0)
         self.assertEqual(args.refine_seconds, 2.0)
+        self.assertEqual(args.lecture_start_at, "2026-09-12T14:45:00Z")
 
     def test_animation_states_with_same_reference_hint_form_one_slide(self) -> None:
         candidates = [
@@ -283,6 +286,19 @@ class SlideSourceTests(unittest.TestCase):
         self.assertIn("- Mudel: `TalTechNLP/whisper-large-v3-turbo-et-verbatim-2604`", result)
         self.assertIn("- Heli kestus: `02:45:28`", result)
         self.assertIn("- Segmente: 2", result)
+
+    def test_transcript_with_slides_includes_tallinn_lecture_date(self) -> None:
+        transcript = {
+            "lesson": {"lesson_id": "lesson-1", "title": "Test"},
+            "segments": [{"start_seconds": 0.0, "end_seconds": 10.0, "text": "Esimene."}],
+        }
+        result = _render_transcript_with_slides(
+            transcript,
+            [],
+            [],
+            lecture_start_at="2026-09-12T21:30:00Z",
+        )
+        self.assertIn("- Loengu toimumise kuupäev: 13.09.2026", result)
 
     def test_confirmed_reference_title_is_shown_in_transcript(self) -> None:
         transcript = {

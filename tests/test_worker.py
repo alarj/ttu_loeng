@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 import unittest
 import zipfile
+from datetime import datetime
 from pathlib import Path
 
 from lecture_notes.web.settings import OrdsSettings, WorkerSettings
@@ -26,6 +27,7 @@ class FakeRepository:
             "operation_type": "slides",
             "lecture_processing_id": 12,
             "echo_lesson_id": "lesson-id",
+            "lecture_start_at": datetime(2026, 9, 12, 14, 45),
             "echo_public_url": "https://echo360.org.uk/section/id/public",
             "slides_relative_path": "inputs/12/slides.pdf",
             "slide_sensitivity_level": 2,
@@ -128,6 +130,8 @@ class WorkerTests(unittest.TestCase):
             self.assertIn("--slides-input", created[0].command)
             self.assertIn("--change-distance", created[0].command)
             self.assertIn("0.014000", created[0].command)
+            self.assertIn("--lecture-start-at", created[0].command)
+            self.assertEqual(created[0].command[created[0].command.index("--lecture-start-at") + 1], "2026-09-12T14:45:00Z")
             self.assertIn(str(Path(directory) / "work/jobs/12/slides/55"), created[0].command)
             self.assertFalse(reference.exists())
             archive = Path(directory) / "outputs/jobs/12/slides/55/images.zip"

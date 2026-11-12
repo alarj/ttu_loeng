@@ -136,6 +136,8 @@ class LectureService:
                 registrations.append(
                     {
                         "lecture_id": lecture_id,
+                        "lecture_title": lesson.get("display_name"),
+                        "lecture_start_at": lesson.get("start_time_utc"),
                         "asr_id": asr_id,
                         "asr_key": asr_key,
                         "slides_id": slides_id,
@@ -166,6 +168,9 @@ class LectureService:
         )
 
     def _register_operations(self, registration: dict[str, Any]) -> None:
+        parameters = self._ords_display_parameters(
+            registration.get("lecture_title"), registration.get("lecture_start_at")
+        )
         try:
             asr = self.ords.register_job(
                 operation_id=registration["asr_id"],
@@ -173,6 +178,7 @@ class LectureService:
                 idempotency_key=registration["asr_key"],
                 lecture_processing_id=registration["lecture_id"],
                 previous_job_id=None,
+                parameters=parameters,
             )
             asr_job_id = int(asr["job_id"])
             self.repository.set_operation_registered(registration["asr_id"], asr_job_id)
@@ -193,6 +199,7 @@ class LectureService:
                 idempotency_key=registration["slides_key"],
                 lecture_processing_id=registration["lecture_id"],
                 previous_job_id=asr_job_id,
+                parameters=parameters,
             )
             self.repository.set_operation_registered(registration["slides_id"], int(slides["job_id"]))
         except (OrdsError, KeyError, TypeError, ValueError) as exc:
@@ -241,12 +248,29 @@ class LectureService:
                 idempotency_key=idempotency_key,
                 lecture_processing_id=lecture_id,
                 previous_job_id=previous_job_id,
+                parameters=self._ords_display_parameters(
+                    lecture.lecture_title, lecture.lecture_start_at
+                ),
             )
             self.repository.set_operation_registered(operation_id, int(response["job_id"]))
         except (OrdsError, KeyError, TypeError, ValueError) as exc:
             code = exc.code if isinstance(exc, OrdsError) else "INVALID_ORDS_RESPONSE"
             self.repository.set_registration_error(operation_id, code, str(exc))
         return lecture.lecture_processing_id
+
+    @staticmethod
+    def _ords_display_parameters(
+        lecture_title: object | None, lecture_start_at: object | None
+    ) -> dict[str, str]:
+        """Create a non-authoritative label snapshot for ORDS administration."""
+        parameters: dict[str, str] = {}
+        if isinstance(lecture_title, str) and lecture_title.strip():
+            parameters["lecture_title"] = lecture_title.strip()
+        if isinstance(lecture_start_at, datetime):
+            parameters["lecture_start_at"] = lecture_start_at.isoformat()
+        elif isinstance(lecture_start_at, str) and lecture_start_at.strip():
+            parameters["lecture_start_at"] = lecture_start_at.strip()
+        return parameters
 
     def _with_statuses(self, lecture: Lecture) -> Lecture:
         operations = []
@@ -259,6 +283,10 @@ class LectureService:
                     status = "UNAVAILABLE"
             elif operation.registration_error_message:
                 status = "REGISTRATION_ERROR"
+            elif operation.local_outcome == "SUCCEEDED":
+                # Historical results may predate ORDS integration. Their successful
+                # local outcome is meaningful even though no ORDS job exists.
+                status = "MANUAL_OK"
             operations.append(replace(operation, status=status or "NOT_REGISTERED"))
         lecture.operations = operations
         return lecture
